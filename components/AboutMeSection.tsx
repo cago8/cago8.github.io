@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { site } from "../config/site";
 
 export default function AboutMeSection() {
   return (
@@ -14,14 +15,14 @@ export default function AboutMeSection() {
       <div className="relative z-10 grid grid-cols-1 items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="relative mx-auto w-full max-w-[380px]">
           <div className="absolute -inset-2 rounded-container bg-gradient-to-br from-brand-primary/45 via-brand-secondary/35 to-transparent blur-xl" />
-          <div className="relative overflow-hidden rounded-container border border-slate-700/70 bg-slate-900/60 p-2 shadow-soft-deeper">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-card">
+          <div className="relative overflow-hidden rounded-container border border-slate-700/70 bg-background shadow-soft-deeper">
+            <div className="relative aspect-[4/5] w-full overflow-hidden bg-background">
               <Image
                 src="/assets/aboutme.jpg"
-                alt="Mert Tuna"
+                alt={site.name}
                 fill
                 sizes="(max-width: 1024px) 90vw, 380px"
-                className="object-cover"
+                className="object-cover object-center"
                 priority={false}
               />
             </div>
@@ -31,7 +32,7 @@ export default function AboutMeSection() {
         <div>
           <p className="font-body text-xs uppercase tracking-[0.16em] text-slate-300">About Me</p>
           <h2 className="mt-3 font-heading text-4xl font-bold text-brand-primary sm:text-5xl">
-            Engineer, Builder, Dreamer.
+            Always learning. Always building.
           </h2>
 
           <a
@@ -45,23 +46,21 @@ export default function AboutMeSection() {
           </a>
 
           <p className="mt-6 font-body text-sm leading-relaxed text-slate-300">
-            A senior double-major student in Computer Engineering and Electrical & Electronics
-            Engineering, with a minor in Business Administration.
+            I study at Koç University and enjoy turning ideas into reliable software
+            applications with clean architecture and solid object-oriented design.
           </p>
 
           <p className="mt-4 font-body text-sm leading-relaxed text-slate-300">
-            An AI enthusiast into deep learning/machine learning, and currently exploring how to
-            work efficiently with LLM systems through Agentic AI, RAG, MCP, LangChain, and
-            LangGraph.
+            I&apos;m actively learning AI and machine learning, experimenting with vector search and
+            embeddings (including Qdrant), and shipping faster with Docker, Railway, and AI-assisted
+            workflows (Claude, Cursor).
           </p>
 
           <p className="mt-4 font-body text-sm leading-relaxed text-slate-300">
-            A daydreamer who loves discussing startup ideas anytime with friends.
+            I&apos;m open to collaborating on software projects across mobile (Flutter, Dart, Swift,
+            C#), web, and desktop, and I care about design patterns, DevOps, and thoughtful UI.
           </p>
 
-          <p className="mt-4 font-body text-sm leading-relaxed text-slate-300">
-            Outside of work, I love video games, game development, guitar, vibe coding, fitness.
-          </p>
         </div>
       </div>
     </section>

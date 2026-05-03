@@ -33,8 +33,13 @@ export default function ContactCard({ icon: Icon, label, value, href, delay = 0 
   );
 
   if (href) {
+    const isExternalHttp = href.startsWith("http");
     return (
-      <Link href={href} target={href.startsWith("http") || href.startsWith("mailto:") ? "_blank" : undefined} rel="noopener noreferrer">
+      <Link
+        href={href}
+        target={isExternalHttp ? "_blank" : undefined}
+        rel={isExternalHttp ? "noopener noreferrer" : undefined}
+      >
         {content}
       </Link>
     );

@@ -2,57 +2,48 @@ export interface WorkItem {
   title: string;
   summary: string;
   technologies: string[];
-  link: string;
+  /** Omit when there is no public URL yet (card hides the link button). */
+  link?: string;
   imageUrl: string;
 }
 
 export const workData: WorkItem[] = [
   {
-    title: 'AI-Based Mental Health Text Classification',
+    title: 'KUMap',
     summary:
-      'Co-authored a comparative research study benchmarking a hybrid NLP pipeline with KNIME and Python on 51,000 text samples. Achieved 83.6% accuracy by fine-tuning a BERT transformer to detect specific mental health conditions.',
-    technologies: ['Python', 'KNIME', 'BERT', 'NLP', 'Research'],
-    link: 'https://github.com/mtunaswe/mental-health-text-classification',
+      'Cross-platform Flutter application for navigating Koç University’s campus: interactive maps, building and landmark context, and wayfinding tuned for daily student life—from lectures and labs to dorms and common hubs. Designed for clarity on small screens with smooth panning/zoom and quick orientation on the Sarıyer campus. Published on Koç Hub; try it at https://kumap.hub.ku.edu.tr.',
+    technologies: ['Flutter', 'Campus maps', 'Navigation', 'Koç Hub'],
+    link: 'https://kumap.hub.ku.edu.tr',
     imageUrl: '/assets/projects/project1.png',
   },
   {
-    title: 'Pedestrian Action Prediction for Autonomous Driving',
+    title: 'ACTIVE',
     summary:
-      'Co-authored a comparative study on pedestrian crossing intent prediction by designing and benchmarking three modular computer-vision pipelines with detection, tracking, and intention prediction models for autonomous agents.',
-    technologies: ['Computer Vision', 'Object Detection', 'Tracking', 'Autonomous Systems'],
-    link: 'https://drive.google.com/file/d/1B8PXJQEiGoKYq82fyQQIm3ldQUt-YSFE/view',
+      'Adaptive Context-aware Travel Intelligent Virtual Explorer: a Flutter app combining Google Maps navigation, AR moments, and an AI companion for smarter trip exploration.',
+    technologies: ['Flutter', 'Google Maps', 'AR', 'AI'],
     imageUrl: '/assets/projects/project2.png',
   },
   {
-    title: '3D Isometric City Builder',
+    title: 'EPL Predictor ’26',
     summary:
-      'Engineered a custom isometric camera controller with smooth panning, rotation, and dynamic zoom for strategy gameplay. Applied OOP principles and built autonomous vehicle navigation plus a dynamic UI tooltip system for real-time feedback.',
-    technologies: ['Unity', 'C#', 'OOP', 'Game Systems', 'UI'],
-    link: 'https://github.com/mtunaswe/Eco-Architect-s-City-Builder',
+      'Multi-stage ML pipeline for English Premier League outcomes: regress expected goals (xG) per match, then classify home–draw–away using those predictions. Built on archival and rolling-form data (2000–2025) plus live 2025–26 signals; ensemble models with XGBoost leading around 52% accuracy in evaluation. Insights exposed through a real-time React and Tailwind dashboard.',
+    technologies: ['Python', 'XGBoost', 'Ensembles', 'React', 'Tailwind', 'Sports analytics'],
     imageUrl: '/assets/projects/project3.png',
   },
   {
-    title: 'Java Tower Defense Game',
+    title: 'RokueQuest',
     summary:
-      'Led development of a top-ranked tower defense game in a collaborative Agile environment, delivering advanced mechanics and robust software architecture in Java.',
-    technologies: ['Java', 'Agile', 'Game Architecture', 'Team Leadership'],
-    link: 'https://github.com/mtunaswe/Tower-Defense-Game',
+      'Roguelike dungeon crawler in Java with procedural generation, turn-based combat, loot, and permadeath—structured as a COMP302-style software engineering game project.',
+    technologies: ['Java', 'Roguelike', 'OOP', 'Swing'],
+    link: 'https://github.com/cago8/RokueQuest-A-Roguelike-Adventure-with-Java',
     imageUrl: '/assets/projects/project4.png',
   },
   {
-    title: 'UNO Card Game Simulation',
+    title: 'PhotoCloud',
     summary:
-      'Engineered a full digital UNO adaptation as a solo project, using advanced Object-Oriented Programming principles for clean gameplay logic and maintainable systems.',
-    technologies: ['Java', 'OOP', 'Game Logic', 'Software Design'],
-    link: 'https://github.com/mtunaswe/UNO-PROJECT',
+      'Desktop Java social app inspired by Instagram: authentication, photo sharing, likes and comments, profiles, discovery, and layered architecture with Swing UI.',
+    technologies: ['Java', 'Swing', 'OOP', 'Desktop UI'],
+    link: 'https://github.com/cago8/PhotoCloud',
     imageUrl: '/assets/projects/project5.png',
-  },
-  {
-    title: '5-Axis 3D Printer Prototype',
-    summary:
-      'Designed and prototyped a functional 5-axis printer over a two-semester capstone, integrating hardware mechanics with embedded software to execute complex motion paths.',
-    technologies: ['Embedded Systems', 'Mechatronics', 'Prototyping', 'Control Systems'],
-    link: 'https://github.com/mtunaswe/5axisPrinter',
-    imageUrl: '/assets/projects/project6.png',
   },
 ];

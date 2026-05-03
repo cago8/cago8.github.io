@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import HoverLinks from "./HoverLinks";
+import { site } from "../config/site";
 
 const links = [
   { label: "ABOUT", target: "#about" },
@@ -81,7 +82,7 @@ export default function Navbar() {
       <div className="header-shell">
         <div className="header">
           <a href="#home-top" className="navbar-title navbar-icon-link" data-cursor="disable" data-href="#home-top" aria-label="Home">
-            <Image src="/myicon.ico" alt="Mert Tuna" width={28} height={28} className="navbar-icon" />
+            <Image src="/myicon.ico" alt={site.name} width={28} height={28} className="navbar-icon" />
           </a>
 
           {isMenuOpen ? (

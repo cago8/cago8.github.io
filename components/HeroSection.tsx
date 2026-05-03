@@ -4,21 +4,22 @@ import { Suspense, useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Float, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { FaGithub, FaInstagram, FaLinkedin } from 'react-icons/fa6';
+import { FaCodepen, FaGithub, FaInstagram, FaLinkedin, FaReddit, FaXTwitter } from 'react-icons/fa6';
 import { SiGmail } from 'react-icons/si';
+import { site } from '../config/site';
 
 const MOUSE_INTERPOLATION = { x: 0.1, y: 0.2 };
 const TOUCH_IDLE_INTERPOLATION = { x: 0.03, y: 0.03 };
+/** Added to `targetX` so the hero model sits slightly right of the prior layout. */
+const MODEL_X_NUDGE = 0.28;
 
 const socialLinks = [
-  { label: 'GitHub', href: 'https://github.com/mtunaswe', Icon: FaGithub },
-  { label: 'LinkedIn', href: 'https://www.linkedin.com/in/mtuna/', Icon: FaLinkedin },
-  { label: 'Gmail', href: 'mailto:mtuna21@ku.edu.tr', Icon: SiGmail },
-  {
-    label: 'Instagram',
-    href: 'https://www.instagram.com/merttna_?igsh=MWN3MzdheW4yNms1cQ%3D%3D&utm_source=qr',
-    Icon: FaInstagram,
-  },
+  { label: 'GitHub', href: site.social.github, Icon: FaGithub },
+  { label: 'LinkedIn', href: site.social.linkedin, Icon: FaLinkedin },
+  { label: 'Gmail', href: `mailto:${site.email}`, Icon: SiGmail },
+  { label: 'Instagram', href: site.social.instagram, Icon: FaInstagram },
+  { label: 'X', href: site.social.x, Icon: FaXTwitter },
+  { label: 'Reddit', href: site.social.reddit, Icon: FaReddit },
 ];
 
 function PenguinModel() {
@@ -138,7 +139,7 @@ function PenguinModel() {
     }
 
     anchor.scale.setScalar(targetScale);
-    anchor.position.set(targetX, targetY, 0);
+    anchor.position.set(targetX + MODEL_X_NUDGE, targetY, 0);
 
     const { x: mouseX, y: mouseY } = mouseRef.current;
     const { x: interpolationX, y: interpolationY } = interpolationRef.current;
@@ -184,7 +185,7 @@ export default function HeroSection() {
           <directionalLight intensity={1.18} position={[2.4, 3.2, 3.2]} />
           <Suspense fallback={null}>
             <PenguinModel />
-            <Environment preset="city" />
+            <Environment files="/assets/hdri/potsdamer_platz_1k.hdr" />
           </Suspense>
           <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
         </Canvas>
@@ -194,12 +195,14 @@ export default function HeroSection() {
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl items-start px-6 pb-16 pt-24 sm:px-10 md:items-center md:py-16 lg:px-14">
         <div className="max-w-2xl space-y-5 pb-10 sm:pb-12 md:max-w-[56%] md:pb-0 hero-enter">
-          <p className="hero-enter-item text-xs uppercase tracking-[0.2em] text-slate-300">Student Developer · Engineer · Builder </p>
+          <p className="hero-enter-item text-xs uppercase tracking-[0.2em] text-slate-300">
+            Software Engineer · AI &amp; ML
+          </p>
           <h1 className="hero-enter-item font-heading text-5xl font-extrabold leading-[0.98] text-slate-50 sm:text-6xl md:text-7xl lg:text-8xl">
-            Mert <span className="text-brand-primary">Tuna</span>
+            {site.givenName} <span className="text-brand-primary">{site.familyName}</span>
           </h1>
           <p className="hero-enter-item max-w-xl font-body text-lg leading-relaxed text-slate-200 sm:text-xl">
-            Passionate about building things.
+           Building with passion.
           </p>
 
           <div id="socials" className="hero-enter-item pt-2">

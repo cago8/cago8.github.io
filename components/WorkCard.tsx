@@ -1,10 +1,42 @@
 "use client";
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import { FaGithub } from 'react-icons/fa6';
 import type { WorkItem } from './workData';
+
+const SUMMARY_URL_REGEX = /(https?:\/\/[^\s]+)/gi;
+
+function stripTrailingPunctuation(url: string): string {
+  return url.replace(/[.,;:)\]'»]+$/u, '');
+}
+
+/** Turns raw https URLs in plain-text summaries into clickable links. */
+function linkifySummary(text: string): ReactNode[] {
+  const parts = text.split(SUMMARY_URL_REGEX);
+  return parts.map((part, index) => {
+    if (/^https?:\/\//i.test(part)) {
+      const href = stripTrailingPunctuation(part);
+      const trailing = part.slice(href.length);
+      return (
+        <span key={`url-${index}`}>
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-brand-secondary underline decoration-brand-secondary/40 underline-offset-[3px] transition hover:text-brand-primary hover:decoration-brand-primary"
+            data-cursor="disable"
+          >
+            {href}
+          </a>
+          {trailing}
+        </span>
+      );
+    }
+    return part.length > 0 ? <span key={`txt-${index}`}>{part}</span> : null;
+  });
+}
 
 type WorkCardProps = {
   item: WorkItem;
@@ -39,8 +71,9 @@ export default function WorkCard({ item, index }: WorkCardProps) {
     amount: 0.2,
   });
 
-  const isGithub = useMemo(() => item.link.includes('github.com'), [item.link]);
+  const isGithub = useMemo(() => Boolean(item.link?.includes('github.com')), [item.link]);
   const linkLabel = useMemo(() => (isGithub ? 'Code' : 'View'), [isGithub]);
+  const summaryContent = useMemo(() => linkifySummary(item.summary), [item.summary]);
 
   return (
     <motion.article
@@ -62,7 +95,7 @@ export default function WorkCard({ item, index }: WorkCardProps) {
             }
           : undefined
       }
-      className="group relative flex h-[68vh] max-h-[660px] w-[min(78vw,390px)] min-w-[330px] flex-col overflow-hidden rounded-2xl border border-brand-primary/25 bg-slate-950/40 p-4 shadow-soft-deeper backdrop-blur-xl"
+      className="group relative flex h-[752px] w-[min(78vw,390px)] min-w-[330px] shrink-0 flex-col overflow-hidden rounded-2xl border border-brand-primary/25 bg-slate-950/40 p-4 shadow-soft-deeper backdrop-blur-xl sm:h-[780px]"
     >
       {enableHoverEffects && (
         <motion.div
@@ -85,9 +118,9 @@ export default function WorkCard({ item, index }: WorkCardProps) {
         />
       )}
 
-      <div className="relative z-10 flex flex-1 flex-col">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <motion.div
-          className="mb-4 h-44 w-full overflow-hidden rounded-xl border border-brand-primary/35 bg-slate-900/60 sm:h-48"
+          className="mb-4 flex h-52 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-primary/35 bg-slate-950 sm:h-60"
           initial={{ opacity: 0, y: 10 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
           transition={{ duration: 0.45, delay: index * 0.1 + 0.15 }}
@@ -98,73 +131,79 @@ export default function WorkCard({ item, index }: WorkCardProps) {
               alt={`${item.title} preview image`}
               fill
               sizes="(max-width: 640px) 78vw, 390px"
-              className="object-cover"
+              className="object-contain object-center"
               priority={index < 2}
             />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/30 via-transparent to-transparent" />
           </div>
         </motion.div>
 
-        <span className="mb-1 inline-flex w-fit rounded-full border border-brand-secondary/40 px-3 py-1 text-[11px] uppercase tracking-[0.12em] text-brand-secondary">
-          Project {String(index + 1).padStart(2, '0')}
-        </span>
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <span className="inline-flex w-fit shrink-0 rounded-full border border-brand-secondary/40 px-3 py-1 text-[11px] uppercase tracking-[0.12em] text-brand-secondary">
+            Project {String(index + 1).padStart(2, '0')}
+          </span>
 
-        <motion.h3
-          className="mt-2 font-heading text-2xl font-bold text-brand-primary"
-          initial={{ opacity: 0, y: 10 }}
-          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-          transition={{ duration: 0.5, delay: index * 0.1 + 0.2 }}
-        >
-          {item.title}
-        </motion.h3>
-
-        <motion.p
-          className="mt-3 flex-grow overflow-hidden font-body text-sm leading-relaxed text-slate-200 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] lg:[-webkit-line-clamp:5]"
-          initial={{ opacity: 0, y: 10 }}
-          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-          transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
-        >
-          {item.summary}
-        </motion.p>
-
-        <motion.div
-          className="mb-4 mt-4 flex max-h-[4.25rem] flex-wrap gap-2 overflow-hidden"
-          initial={{ opacity: 0, y: 10 }}
-          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-          transition={{ duration: 0.5, delay: index * 0.1 + 0.4 }}
-        >
-          {item.technologies.map((techItem, techIndex) => (
-            <motion.span
-              key={`${item.title}-tech-${techIndex}`}
-              className="rounded-lg border border-brand-primary/35 bg-brand-primary/10 px-3 py-1 text-xs text-slate-200"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.3, delay: index * 0.1 + 0.5 + techIndex * 0.05, type: 'spring', stiffness: 300 }}
-              whileHover={enableHoverEffects ? { scale: 1.05 } : undefined}
-            >
-              {techItem}
-            </motion.span>
-          ))}
-        </motion.div>
-
-        <motion.div
-          className="mt-auto pb-1 self-start"
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.5, delay: index * 0.1 + 0.6 }}
-        >
-          <motion.a
-            href={item.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex w-auto items-center justify-center gap-2 rounded-full border border-brand-primary/45 bg-brand-primary/10 px-3 py-1.5 font-body text-xs text-slate-100 transition hover:bg-brand-primary/20"
-            whileHover={enableHoverEffects ? { scale: 1.02 } : undefined}
-            whileTap={{ scale: 0.98 }}
+          <motion.h3
+            className="shrink-0 font-heading text-2xl font-bold leading-tight text-brand-primary"
+            initial={{ opacity: 0, y: 10 }}
+            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+            transition={{ duration: 0.5, delay: index * 0.1 + 0.2 }}
           >
-            {isGithub && <FaGithub className="h-4 w-4" />}
-            {linkLabel}
-          </motion.a>
-        </motion.div>
+            {item.title}
+          </motion.h3>
+
+          <motion.p
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain font-body text-sm leading-relaxed text-slate-200 pr-1 [-webkit-overflow-scrolling:touch]"
+            initial={{ opacity: 0, y: 10 }}
+            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+            transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
+          >
+            {summaryContent}
+          </motion.p>
+
+          <motion.div
+            className="flex max-h-[5.25rem] shrink-0 flex-wrap gap-2 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]"
+            initial={{ opacity: 0, y: 10 }}
+            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+            transition={{ duration: 0.5, delay: index * 0.1 + 0.4 }}
+          >
+            {item.technologies.map((techItem, techIndex) => (
+              <motion.span
+                key={`${item.title}-tech-${techIndex}`}
+                className="rounded-lg border border-brand-primary/35 bg-brand-primary/10 px-3 py-1 text-xs text-slate-200"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.3, delay: index * 0.1 + 0.5 + techIndex * 0.05, type: 'spring', stiffness: 300 }}
+                whileHover={enableHoverEffects ? { scale: 1.05 } : undefined}
+              >
+                {techItem}
+              </motion.span>
+            ))}
+          </motion.div>
+
+          {item.link ? (
+            <motion.div
+              className="mt-auto shrink-0 self-start pb-1 pt-1"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              transition={{ duration: 0.5, delay: index * 0.1 + 0.6 }}
+            >
+              <motion.a
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-auto items-center justify-center gap-2 rounded-full border border-brand-primary/45 bg-brand-primary/10 px-3 py-1.5 font-body text-xs text-slate-100 transition hover:bg-brand-primary/20"
+                whileHover={enableHoverEffects ? { scale: 1.02 } : undefined}
+                whileTap={{ scale: 0.98 }}
+              >
+                {isGithub && <FaGithub className="h-4 w-4" />}
+                {linkLabel}
+              </motion.a>
+            </motion.div>
+          ) : (
+            <div className="mt-auto shrink-0 pb-1 pt-1" aria-hidden />
+          )}
+        </div>
       </div>
     </motion.article>
   );

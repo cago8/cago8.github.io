@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, JetBrains_Mono } from "next/font/google";
+import { site } from "../config/site";
 import "./globals.css";
 import Navbar from "../components/Navbar";
 import CursorEffect from "../components/CursorEffect";
@@ -8,18 +9,18 @@ import PageLoader from "../components/PageLoader";
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-display",
   weight: ["500", "600", "700"],
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 });
 
 const jetBrainsMono = JetBrains_Mono({
   variable: "--font-reading",
   weight: ["400", "500", "600"],
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 });
 
 export const metadata: Metadata = {
-  title: "Mert Tuna",
-  description: "My Portfolio Website",
+  title: site.title,
+  description: site.description,
 };
 
 export default function RootLayout({

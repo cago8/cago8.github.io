@@ -38,7 +38,7 @@ export default function Experience() {
       <div className="relative">
         <motion.div
           className="absolute left-3 top-2 hidden w-px bg-gradient-to-b from-brand-primary/60 via-brand-secondary/40 to-transparent md:block"
-          style={{ height: `${experienceData.length * 240}px` }}
+          style={{ height: `${experienceData.length * 280}px` }}
           initial={{ scaleY: 0, originY: 0 }}
           animate={isInView ? { scaleY: 1 } : { scaleY: 0 }}
           transition={{ duration: 1.1, delay: 0.3 }}

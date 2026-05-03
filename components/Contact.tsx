@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { FormEvent, useState, useRef } from "react";
-import { FaGithub, FaInstagram, FaLinkedin } from "react-icons/fa6";
+import { FaCodepen, FaGithub, FaInstagram, FaLinkedin, FaReddit, FaXTwitter } from "react-icons/fa6";
 import { IoMailOutline } from "react-icons/io5";
 import { SiGmail } from "react-icons/si";
 import ContactCard from "./ContactCard";
+import { formSubmitAjaxUrl, site } from "../config/site";
 
-const FORM_ENDPOINT = "https://formsubmit.co/ajax/f81c49ad84eaa71f49082dee9038de35";
+const FORM_ENDPOINT = formSubmitAjaxUrl;
 
 type ContactFormValues = {
   senderName: string;
@@ -18,14 +19,12 @@ type ContactFormValues = {
 };
 
 const socials = [
-  { label: "GitHub", href: "https://github.com/mtunaswe", Icon: FaGithub },
-  { label: "LinkedIn", href: "https://www.linkedin.com/in/mtuna/", Icon: FaLinkedin },
-  { label: "Mail", href: "mailto:mtuna21@ku.edu.tr", Icon: SiGmail },
-  {
-    label: "Instagram",
-    href: "https://www.instagram.com/merttna_?igsh=MWN3MzdheW4yNms1cQ%3D%3D&utm_source=qr",
-    Icon: FaInstagram,
-  },
+  { label: "GitHub", href: site.social.github, Icon: FaGithub },
+  { label: "LinkedIn", href: site.social.linkedin, Icon: FaLinkedin },
+  { label: "Mail", href: `mailto:${site.email}`, Icon: SiGmail },
+  { label: "Instagram", href: site.social.instagram, Icon: FaInstagram },
+  { label: "X", href: site.social.x, Icon: FaXTwitter },
+  { label: "Reddit", href: site.social.reddit, Icon: FaReddit },
 ];
 
 export default function Contact() {
@@ -112,7 +111,8 @@ export default function Contact() {
       >
         <h2 className="font-heading text-5xl font-bold text-brand-primary sm:text-6xl">Let&apos;s Connect</h2>
         <p className="mx-auto mt-4 max-w-3xl font-body text-sm text-slate-300">
-          Open for collaboration, building ideas, and meaningful conversations. Reach me through socials or email.
+          Happy to talk about Java and design patterns, Flutter and mobile, AI/ML, DevOps, open
+          source, or collaborative projects—reach out via the form or any link below.
         </p>
       </motion.div>
 
@@ -217,7 +217,8 @@ export default function Contact() {
             <ContactCard
               icon={IoMailOutline}
               label="Direct Mail"
-              value="mtuna21@ku.edu.tr"
+              value={site.email}
+              href={`mailto:${site.email}`}
               delay={0.2}
             />
           </div>
