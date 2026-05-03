@@ -95,7 +95,7 @@ export default function WorkCard({ item, index }: WorkCardProps) {
             }
           : undefined
       }
-      className="group relative flex h-[752px] w-[min(78vw,390px)] min-w-[330px] shrink-0 flex-col overflow-hidden rounded-2xl border border-brand-primary/25 bg-slate-950/40 p-4 shadow-soft-deeper backdrop-blur-xl sm:h-[780px]"
+      className="group relative flex h-[580px] w-[min(76vw,340px)] min-w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border border-brand-primary/25 bg-slate-950/40 p-3 shadow-soft-deeper backdrop-blur-xl sm:h-[620px]"
     >
       {enableHoverEffects && (
         <motion.div
@@ -120,7 +120,7 @@ export default function WorkCard({ item, index }: WorkCardProps) {
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <motion.div
-          className="mb-4 flex h-52 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-primary/35 bg-slate-950 sm:h-60"
+          className="mb-3 flex h-36 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-primary/35 bg-slate-950 sm:h-40"
           initial={{ opacity: 0, y: 10 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
           transition={{ duration: 0.45, delay: index * 0.1 + 0.15 }}
@@ -130,7 +130,7 @@ export default function WorkCard({ item, index }: WorkCardProps) {
               src={item.imageUrl}
               alt={`${item.title} preview image`}
               fill
-              sizes="(max-width: 640px) 78vw, 390px"
+              sizes="(max-width: 640px) 76vw, 340px"
               className="object-contain object-center"
               priority={index < 2}
             />
@@ -138,13 +138,13 @@ export default function WorkCard({ item, index }: WorkCardProps) {
           </div>
         </motion.div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <span className="inline-flex w-fit shrink-0 rounded-full border border-brand-secondary/40 px-3 py-1 text-[11px] uppercase tracking-[0.12em] text-brand-secondary">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <span className="inline-flex w-fit shrink-0 rounded-full border border-brand-secondary/40 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.14em] text-brand-secondary">
             Project {String(index + 1).padStart(2, '0')}
           </span>
 
           <motion.h3
-            className="shrink-0 font-heading text-2xl font-bold leading-tight text-brand-primary"
+            className="shrink-0 font-heading text-xl font-bold leading-tight text-brand-primary sm:text-[1.35rem]"
             initial={{ opacity: 0, y: 10 }}
             animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
             transition={{ duration: 0.5, delay: index * 0.1 + 0.2 }}
@@ -153,7 +153,7 @@ export default function WorkCard({ item, index }: WorkCardProps) {
           </motion.h3>
 
           <motion.p
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain font-body text-sm leading-relaxed text-slate-200 pr-1 [-webkit-overflow-scrolling:touch]"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain font-body text-[13px] leading-snug text-slate-200 pr-1 [-webkit-overflow-scrolling:touch] sm:text-sm sm:leading-relaxed"
             initial={{ opacity: 0, y: 10 }}
             animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
             transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
@@ -162,7 +162,7 @@ export default function WorkCard({ item, index }: WorkCardProps) {
           </motion.p>
 
           <motion.div
-            className="flex max-h-[5.25rem] shrink-0 flex-wrap gap-2 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]"
+            className="flex max-h-[3.75rem] shrink-0 flex-wrap gap-1.5 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]"
             initial={{ opacity: 0, y: 10 }}
             animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
             transition={{ duration: 0.5, delay: index * 0.1 + 0.4 }}
@@ -170,7 +170,7 @@ export default function WorkCard({ item, index }: WorkCardProps) {
             {item.technologies.map((techItem, techIndex) => (
               <motion.span
                 key={`${item.title}-tech-${techIndex}`}
-                className="rounded-lg border border-brand-primary/35 bg-brand-primary/10 px-3 py-1 text-xs text-slate-200"
+                className="rounded-md border border-brand-primary/35 bg-brand-primary/10 px-2 py-0.5 text-[11px] text-slate-200 sm:text-xs"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.3, delay: index * 0.1 + 0.5 + techIndex * 0.05, type: 'spring', stiffness: 300 }}
