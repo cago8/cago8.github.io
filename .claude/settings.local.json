@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --no-install playwright --version)",
+      "Bash(npm run *)",
+      "Bash(disown)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000)",
+      "Bash(mkdir -p /private/tmp/claude-501/-Users-cago-Desktop---portfolio-cago8-github-io/0540e8e3-0ea9-4fff-82d4-96b10b77a3d1/scratchpad/pw)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(break)",
+      "Read(//private/tmp/**)",
+      "Bash(npx playwright *)",
+      "Read(//Users/cago/Library/Caches/ms-playwright/**)",
+      "Bash(node -e \"const {chromium} = require\\('playwright'\\); console.log\\(chromium.executablePath\\(\\)\\)\")",
+      "Bash(node shot.js)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npx eslint *)",
+      "Bash(pkill -f \"next dev\")"
+    ]
+  }
+}

@@ -1,19 +1,8 @@
-import HeroSection from "../components/HeroSection";
-import AboutMeSection from "../components/AboutMeSection";
-import Skills from "../components/Skills";
-import Work from "../components/Work";
-import Experience from "../components/Experience";
-import Contact from "../components/Contact";
+import { ListView } from '../components/ListView';
+import { Portfolio } from '../components/Portfolio';
 
 export default function Home() {
-  return (
-    <>
-      <HeroSection />
-      <AboutMeSection />
-      <Experience />
-      <Skills />
-      <Work />
-      <Contact />
-    </>
-  );
+  // ListView is rendered on the server and handed to the client shell, so the
+  // full content ships as static HTML regardless of the active view.
+  return <Portfolio listView={<ListView />} />;
 }
