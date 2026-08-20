@@ -41,10 +41,15 @@ function bodyFor(object: SceneObject): ReactNode {
  */
 export function Panel({ object, onClose }: { object: SceneObject; onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    closeRef.current?.focus();
+    // Not the close button: a panel typically opens while the diver is still
+    // ramming an object at speed, often with Space (boost) physically held
+    // down. Autofocusing an actionable button here means the browser fires a
+    // click on it the moment that already-held key is released, closing the
+    // panel it just opened. The dialog itself is not activatable, so it
+    // absorbs that keyup harmlessly; Tab still reaches the close button next.
+    dialogRef.current?.focus();
   }, [object.id]);
 
   useEffect(() => {
@@ -89,6 +94,7 @@ export function Panel({ object, onClose }: { object: SceneObject; onClose: () =>
         role="dialog"
         aria-modal="true"
         aria-labelledby="panel-heading"
+        tabIndex={-1}
       >
         <header className="panel-head">
           <p className="panel-kicker" data-category={object.category}>
@@ -97,7 +103,7 @@ export function Panel({ object, onClose }: { object: SceneObject; onClose: () =>
           <h2 id="panel-heading" className="panel-title">
             {object.title}
           </h2>
-          <button ref={closeRef} type="button" className="panel-close" onClick={onClose}>
+          <button type="button" className="panel-close" onClick={onClose}>
             <span aria-hidden="true">✕</span>
             <span className="sr-only">Close</span>
           </button>

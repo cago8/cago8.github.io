@@ -46,6 +46,8 @@
   --aqua: #46d4c8;
   --coral: #ff6f4e;
   --sun: #ffc46b;
+  /** Mirrors categoryAccent.skills in palette.ts — keep the two in sync. */
+  --skills-accent: #8fd6e8;
 
   --line: rgba(70, 212, 200, 0.24);
   --line-soft: rgba(245, 239, 227, 0.14);
@@ -451,6 +453,7 @@ button {
 
 .stage-hint {
   position: absolute;
+  z-index: 2;
   left: 14px;
   top: 12px;
   pointer-events: none;
@@ -477,9 +480,12 @@ button {
   color: var(--aqua);
 }
 
-/* Floating section headers above each playground cluster. */
+/* Floating section headers above each playground cluster. Above the onboarding
+   hint (z-index 2) so a header near the top of the water is never hidden
+   behind it on narrower stages. */
 .stage-section-labels {
   position: absolute;
+  z-index: 3;
   inset: 0;
   margin: 0;
   padding: 0;
@@ -508,7 +514,7 @@ button {
 }
 
 .stage-section-label[data-category='skills'] {
-  border-color: var(--sun);
+  border-color: var(--skills-accent);
 }
 
 .stage-section-label[data-category='projects'] {
@@ -615,6 +621,10 @@ button {
   box-shadow: 0 24px 60px rgba(2, 10, 18, 0.65);
 }
 
+.panel:focus-visible {
+  outline: none;
+}
+
 .panel-head {
   position: sticky;
   top: 0;
@@ -679,6 +689,9 @@ button {
 /* ------------------------------------------------------------- list view */
 
 .listview {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
   padding: 0 var(--gutter) clamp(2rem, 5vw, 4rem);
   display: grid;
   gap: clamp(3rem, 7vw, 5rem);
@@ -690,10 +703,12 @@ button {
 
 .listview-head {
   display: grid;
+  justify-items: center;
   gap: 0.35rem;
   margin-bottom: 1.4rem;
   padding-bottom: 0.9rem;
   border-bottom: 1px solid var(--card-line);
+  text-align: center;
 }
 
 .listview-head h2 {
@@ -715,6 +730,7 @@ button {
 
 .stack {
   display: grid;
+  justify-items: center;
   gap: 1rem;
 }
 
@@ -733,6 +749,19 @@ button {
   /* Cards take their own height: a long project summary should not leave the
      card beside it as a tall empty box. */
   align-items: start;
+}
+
+/*
+ * Skills and projects vary a lot in text length (one chip versus seven, a
+ * screenshot versus none), so `align-items: start` alone leaves a ragged row
+ * where the short cards look accidentally undersized next to the tall ones.
+ * Stretching every card to the row's tallest neighbour reads as one uniform
+ * grid; each card's own `align-content: start` keeps its content pinned to
+ * the top, so the extra height is just quiet space, not stretched content.
+ */
+.grid--skills,
+.grid--projects {
+  align-items: stretch;
 }
 
 .grid--skills > * {
@@ -757,6 +786,22 @@ button {
   display: grid;
   gap: 0.6rem;
   align-content: start;
+}
+
+/* Click feedback: the List View's answer to a badge press, matched to the
+   wobble the playground draws on canvas. The reduced-motion block at the end
+   of this file flattens it to nothing, leaving just the sound. */
+@keyframes card-tap-shake {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  22% { transform: translate3d(-5px, 0, 0) rotate(-0.7deg); }
+  45% { transform: translate3d(4px, 0, 0) rotate(0.55deg); }
+  68% { transform: translate3d(-2px, 0, 0) rotate(-0.3deg); }
+  86% { transform: translate3d(1px, 0, 0) rotate(0.12deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+}
+
+.card.is-tapped {
+  animation: card-tap-shake 260ms ease-out;
 }
 
 .card--experience {
@@ -846,6 +891,71 @@ button {
   aspect-ratio: auto;
   max-height: 46dvh;
   object-fit: contain;
+}
+
+.card-shot-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.lightbox-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.75rem, 3vw, 2rem);
+}
+
+.lightbox-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(3, 14, 24, 0.86);
+  cursor: pointer;
+}
+
+.lightbox {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90dvh;
+}
+
+.lightbox-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 90vw;
+  max-height: 90dvh;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid var(--card-line);
+  background: var(--deep);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--card-line);
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lightbox-close:hover {
+  background: var(--text);
+  color: var(--card);
 }
 
 .chips {

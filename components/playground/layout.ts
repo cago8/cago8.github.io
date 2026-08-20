@@ -121,7 +121,7 @@ const MODES: Record<LayoutMode, ModeSpec> = {
     bands: {
       profile: { x0: 0.012, y0: 0.08, x1: 0.145, y1: 0.34 },
       experience: { x0: 0.26, y0: 0.03, x1: 0.74, y1: 0.42 },
-      skills: { x0: 0.025, y0: 0.5, x1: 0.42, y1: 0.87, stagger: true },
+      skills: { x0: 0.025, y0: 0.5, x1: 0.42, y1: 0.87 },
       projects: { x0: 0.555, y0: 0.5, x1: 0.985, y1: 0.87 },
       contact: { x0: 0.855, y0: 0.08, x1: 0.99, y1: 0.34 },
     },
@@ -132,7 +132,7 @@ const MODES: Record<LayoutMode, ModeSpec> = {
     bands: {
       profile: { x0: 0.02, y0: 0.02, x1: 0.2, y1: 0.18 },
       experience: { x0: 0.22, y0: 0.02, x1: 0.78, y1: 0.36 },
-      skills: { x0: 0.02, y0: 0.42, x1: 0.5, y1: 0.86, stagger: true },
+      skills: { x0: 0.02, y0: 0.42, x1: 0.5, y1: 0.86 },
       projects: { x0: 0.52, y0: 0.42, x1: 0.99, y1: 0.86 },
       contact: { x0: 0.8, y0: 0.02, x1: 0.99, y1: 0.18 },
     },
@@ -146,7 +146,7 @@ const MODES: Record<LayoutMode, ModeSpec> = {
       profile: { x0: 0.03, y0: 0.07, x1: 0.46, y1: 0.17 },
       contact: { x0: 0.54, y0: 0.07, x1: 0.97, y1: 0.17 },
       experience: { x0: 0.03, y0: 0.2, x1: 0.97, y1: 0.45 },
-      skills: { x0: 0.03, y0: 0.47, x1: 0.97, y1: 0.66, stagger: true },
+      skills: { x0: 0.03, y0: 0.47, x1: 0.97, y1: 0.66 },
       projects: { x0: 0.03, y0: 0.68, x1: 0.97, y1: 0.815 },
     },
     diver: { x: 0.5, y: 0.865 },
@@ -172,8 +172,14 @@ for (const obj of sceneObjects) {
   else byCategory.set(obj.category, [obj]);
 }
 
-/** Breathing room between two neighbouring objects, in world units. */
-const GAP = 26;
+/**
+ * Breathing room between two neighbouring objects, in world units. Kept wider
+ * than the diver's own diameter (40): anything tighter turns every packed row
+ * into a wall the diver can only bounce off, never slip through, which is
+ * what made the object in the middle of a row (nothing but neighbours on
+ * every side) effectively unreachable.
+ */
+const GAP = 46;
 
 interface Grid {
   cols: number;
@@ -208,7 +214,7 @@ function bestGrid(band: Band, bw: number, bh: number, count: number, cellW: numb
     const remainder = count % cols;
     const orphan = remainder === 0 ? 0 : (cols - remainder) / count;
     const score =
-      Math.abs(gw / gh - bandRatio) / bandRatio + orphan * 0.8 + overW * 40 + overH * 12;
+      Math.abs(gw / gh - bandRatio) / bandRatio + orphan * 4.5 + overW * 40 + overH * 12;
     if (!best || score < best.score) {
       best = { cols, rows, gw, gh, stagger, overflow: overW + overH, score };
     }

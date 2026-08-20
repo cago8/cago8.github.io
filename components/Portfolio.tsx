@@ -30,10 +30,21 @@ export function Portfolio({ listView }: { listView: ReactNode }) {
       <header className="masthead">
         <div className="masthead-id">
           <span className="masthead-name">{site.name}</span>
-          <span className="masthead-role">Computer Engineering</span>
+          <span className="masthead-role">Computer Engineer</span>
         </div>
 
         <div className="masthead-actions">
+          {view === 'play' && (
+            <button
+              type="button"
+              className="btn btn--ghost btn--icon"
+              aria-pressed={!muted}
+              onClick={() => setMuted(!muted)}
+            >
+              <span aria-hidden="true">{muted ? '🔇' : '🔊'}</span>
+              <span className="sr-only">{muted ? 'Turn sound on' : 'Turn sound off'}</span>
+            </button>
+          )}
           <div className="switch" role="group" aria-label="Choose how to browse this site">
             <button
               type="button"
@@ -50,17 +61,6 @@ export function Portfolio({ listView }: { listView: ReactNode }) {
               List view
             </button>
           </div>
-          {view === 'play' && (
-            <button
-              type="button"
-              className="btn btn--ghost btn--icon"
-              aria-pressed={!muted}
-              onClick={() => setMuted(!muted)}
-            >
-              <span aria-hidden="true">{muted ? '🔇' : '🔊'}</span>
-              <span className="sr-only">{muted ? 'Turn sound on' : 'Turn sound off'}</span>
-            </button>
-          )}
           <a className="btn btn--ghost" href={site.resume} target="_blank" rel="noopener noreferrer">
             Resume
           </a>

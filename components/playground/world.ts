@@ -75,16 +75,19 @@ const WALL = 220;
  */
 const OPEN_SPEED = 4.2;
 /** No second panel for this long after one opens. */
-const OPEN_COOLDOWN_MS = 600;
+const OPEN_COOLDOWN_MS = 350;
 /** How far the diver must get from an object before it can open again. */
 const DISARM_MARGIN = 36;
 /** The diver spawns among the objects; ignore contacts while it settles. */
 const START_GRACE_MS = 500;
+/** No panel open from momentum a released drag imparted a moment ago. */
+const DRAG_RELEASE_GRACE_MS = 250;
 
 export function createWorld(
   M: Matter,
   layout: Layout,
   onImpact: (impact: Impact) => void,
+  onCollide: () => void,
 ): WorldHandle {
   const { Bodies, Body, Composite, Constraint, Engine, Events, Query, Vector } = M;
 
@@ -204,13 +207,27 @@ export function createWorld(
   let paused = false;
   let elapsed = 0;
   let lastOpenAt = -Infinity;
+  let dragReleasedAt = -Infinity;
   /** Objects the diver is still resting against after opening them. */
   const disarmed = new Set<string>();
 
   Events.on(engine, 'collisionStart', (event) => {
     for (const pair of event.pairs) {
       const other = pair.bodyA === diver ? pair.bodyB : pair.bodyB === diver ? pair.bodyA : null;
-      if (!other) continue;
+      if (!other) {
+        // Neither side is the diver: a badge-on-badge knock. Only worth a
+        // sound while one of them is being actively dragged — otherwise the
+        // idle sway and current drift would set it off constantly.
+        if (
+          dragConstraint &&
+          (pair.bodyA === dragConstraint.bodyB || pair.bodyB === dragConstraint.bodyB) &&
+          byBodyId.has(pair.bodyA.id) &&
+          byBodyId.has(pair.bodyB.id)
+        ) {
+          onCollide();
+        }
+        continue;
+      }
       const obj = byBodyId.get(other.id);
       if (!obj) continue;
 
@@ -227,6 +244,7 @@ export function createWorld(
         paused ||
         dragConstraint !== null ||
         elapsed < START_GRACE_MS ||
+        elapsed - dragReleasedAt < DRAG_RELEASE_GRACE_MS ||
         disarmed.has(obj.id) ||
         elapsed - lastOpenAt < OPEN_COOLDOWN_MS;
       if (suppressed) continue;
@@ -236,10 +254,12 @@ export function createWorld(
         lastOpenAt = elapsed;
         disarmed.add(obj.id);
         // Recoil: shove the diver back out along the contact normal so it
-        // separates on its own. Without this, a diver left resting against the
-        // object would re-open the panel the moment the cooldown lapsed.
+        // separates on its own, rather than staying wedged against whatever
+        // it just opened. Kept gentle — `disarmed` already stops that same
+        // object from reopening — so a graze on a crowded neighbour doesn't
+        // fling the diver away from the object it was actually aiming for.
         const away = Vector.normalise(Vector.sub(diver.position, other.position));
-        Body.setVelocity(diver, Vector.mult(away, 3.2));
+        Body.setVelocity(diver, Vector.mult(away, 1.6));
       }
       onImpact({ id: obj.id, speed, strong, x: contact.x, y: contact.y });
     }
@@ -409,12 +429,21 @@ export function createWorld(
       Composite.add(world, dragConstraint);
     },
     moveDrag(x, y) {
-      if (dragConstraint) dragConstraint.pointA = { x, y };
+      if (!dragConstraint) return;
+      // Clamp to the swimmable box so a pointer dragged off-canvas (or off the
+      // top/bottom of the window) still holds the badge inside the visible
+      // water instead of pulling it past the clip and out of view.
+      const margin = 20;
+      dragConstraint.pointA = {
+        x: Math.min(Math.max(x, margin), current.world.w - margin),
+        y: Math.min(Math.max(y, margin), current.seabedY - margin),
+      };
     },
     endDrag() {
       if (dragConstraint) {
         Composite.remove(world, dragConstraint);
         dragConstraint = null;
+        dragReleasedAt = elapsed;
       }
     },
     applyLayout(next) {
@@ -459,6 +488,7 @@ export function createWorld(
       status.stamina = 1;
       elapsed = 0;
       lastOpenAt = -Infinity;
+      dragReleasedAt = -Infinity;
     },
     setPaused(next) {
       paused = next;

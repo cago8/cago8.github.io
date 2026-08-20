@@ -7,7 +7,7 @@ export const hero = {
   facts: [
     { label: 'Based in', value: 'İstanbul, Sarıyer' },
     { label: 'Graduate of', value: 'Computer Engineering, Koç University' },
-    { label: 'Open to', value: 'Game development roles & internships' },
+    { label: 'Open to', value: 'Game development roles' },
   ],
 };
 

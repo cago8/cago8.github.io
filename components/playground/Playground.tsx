@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { playBonk, playOpen } from './audio';
+import { playBonk, playCollide, playGrab, playOpen, playRelease, playTap, primeAudio } from './audio';
 import { buildLayout, type Layout } from './layout';
 import { categoryAccent, palette } from './palette';
 import { Panel } from './Panel';
@@ -26,6 +26,10 @@ const CATEGORY_LABELS = {
   projects: 'Projects',
   contact: 'Contact',
 } as const;
+
+/** How long a clicked badge wobbles, in milliseconds. Short on purpose: it is
+ *  feedback for the click, not a wait before the panel. */
+const SHAKE_MS = 260;
 
 /** Held keys → swim direction. */
 const KEY_VECTORS: Record<string, [number, number]> = {
@@ -63,6 +67,12 @@ export function Playground() {
   } | null>(null);
   const boostPointerRef = useRef<number | null>(null);
   const flashesRef = useRef<(Flash & { born: number })[]>([]);
+  /** Badge id → wall-clock start of its click wobble. Wall clock rather than
+   *  the scene clock because a click that opens a panel pauses the scene. */
+  const shakesRef = useRef(new Map<string, number>());
+  const shakeRafRef = useRef(0);
+  /** Whether the physics loop is drawing, so the wobble ticker can stay idle. */
+  const loopRunningRef = useRef(false);
   const fontsRef = useRef({ sans: 'sans-serif', mono: 'monospace' });
   const uiRef = useRef({ hovered: null as string | null, focused: null as string | null, open: null as string | null });
   /** Set once the engine is live; re-evaluates whether the loop should run. */
@@ -118,12 +128,16 @@ export function Playground() {
     if (view.cssW === 0) return;
 
     const world = worldRef.current;
+    const wall = performance.now();
     const bodies: BodyFrame[] = sceneObjects.map((obj) => {
       const body = world?.bodies.get(obj.id);
       const place = currentLayout.placements.get(obj.id)!;
+      const born = shakesRef.current.get(obj.id);
+      const progress = born === undefined ? 1 : (wall - born) / SHAKE_MS;
+      const shake = progress >= 1 ? 0 : progress;
       return body
-        ? { obj, x: body.position.x, y: body.position.y, angle: body.angle }
-        : { obj, x: place.x, y: place.y, angle: 0 };
+        ? { obj, x: body.position.x, y: body.position.y, angle: body.angle, shake }
+        : { obj, x: place.x, y: place.y, angle: 0, shake };
     });
 
     const now = clockRef.current.t;
@@ -253,7 +267,12 @@ export function Playground() {
       const Matter = (await import('matter-js')).default;
       const { createWorld } = await import('./world');
       if (cancelled || !layoutRef.current) return;
-      const world = createWorld(Matter, layoutRef.current, (impact) => impactRef.current(impact));
+      const world = createWorld(
+        Matter,
+        layoutRef.current,
+        (impact) => impactRef.current(impact),
+        () => playCollide(),
+      );
       worldRef.current = world;
       setReady(true);
 
@@ -270,11 +289,13 @@ export function Playground() {
       const start = () => {
         if (running) return;
         running = true;
+        loopRunningRef.current = true;
         clockRef.current.last = 0;
         rafRef.current = requestAnimationFrame(frame);
       };
       const stop = () => {
         running = false;
+        loopRunningRef.current = false;
         cancelAnimationFrame(rafRef.current);
       };
 
@@ -313,6 +334,42 @@ export function Playground() {
       evaluateRef.current = null;
     };
   }, [motion, hasLayout, draw]);
+
+  /* ------------------------------------------------------- click feedback */
+
+  /**
+   * Answers a click on a badge: pop plus a wobble, fired from the press itself
+   * so it lands before anything the click goes on to open. Under reduced
+   * motion only the sound plays — the same bargain the CSS makes for the
+   * List View cards.
+   */
+  const tap = useCallback(
+    (id: string) => {
+      playTap();
+      if (!motion) return;
+      shakesRef.current.set(id, performance.now());
+      if (shakeRafRef.current) return;
+      const tick = () => {
+        const now = performance.now();
+        for (const [key, born] of shakesRef.current) {
+          if (now - born >= SHAKE_MS) shakesRef.current.delete(key);
+        }
+        // The physics loop already repaints every frame when it is running.
+        if (!loopRunningRef.current) draw();
+        shakeRafRef.current = shakesRef.current.size ? requestAnimationFrame(tick) : 0;
+      };
+      shakeRafRef.current = requestAnimationFrame(tick);
+    },
+    [motion, draw],
+  );
+
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(shakeRafRef.current);
+      shakeRafRef.current = 0;
+    },
+    [],
+  );
 
   /* ---------------------------------------------------------------- panels */
 
@@ -430,6 +487,7 @@ export function Playground() {
 
       if (key in KEY_VECTORS) {
         event.preventDefault();
+        primeAudio();
         keysRef.current.add(key);
         applyKeyVector();
         setEngaged(true);
@@ -476,6 +534,7 @@ export function Playground() {
 
   const onPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (event.button !== 0 && event.pointerType === 'mouse') return;
+    primeAudio();
     const p = toWorld(event.clientX, event.clientY);
     const hit = pick(p.x, p.y);
 
@@ -489,6 +548,7 @@ export function Playground() {
     event.currentTarget.setPointerCapture(event.pointerId);
 
     if (hit) {
+      tap(hit.id);
       pressRef.current = { id: hit.id, x: event.clientX, y: event.clientY, dragging: false };
       return;
     }
@@ -531,6 +591,7 @@ export function Playground() {
       if (!press.dragging && moved > 6 && motion) {
         press.dragging = true;
         worldRef.current?.beginDrag(press.id, p.x, p.y);
+        playGrab();
       }
       if (press.dragging) worldRef.current?.moveDrag(p.x, p.y);
       return;
@@ -564,6 +625,7 @@ export function Playground() {
     if (!press) return;
     if (press.dragging) {
       worldRef.current?.endDrag();
+      playRelease();
     } else if (!motion) {
       // Without physics there is nothing to collide with, so the click has to
       // keep working — this is the only way a reduced-motion visitor can read
@@ -623,7 +685,10 @@ export function Playground() {
                     }}
                     onFocus={() => setFocused(obj.id)}
                     onBlur={() => setFocused((id) => (id === obj.id ? null : id))}
-                    onClick={() => open(obj.id)}
+                    onClick={() => {
+                      tap(obj.id);
+                      open(obj.id);
+                    }}
                     onKeyDown={(event) => {
                       // Space/Enter must not toggle the panel — reserved for
                       // swim controls (boost) and to avoid the box appearing
@@ -648,7 +713,12 @@ export function Playground() {
                 data-category={c.category}
                 style={{
                   left: view.offsetX + c.x * view.scale,
-                  top: view.offsetY + c.y * view.scale,
+                  // The label sits above its cluster via a CSS transform, so a
+                  // cluster near the top of the water would push the label's
+                  // own box above the stage and into its `overflow: hidden`
+                  // clip. Floor it far enough down that the lifted label
+                  // still clears the stage's top edge.
+                  top: Math.max(42, view.offsetY + c.y * view.scale),
                 }}
               >
                 {CATEGORY_LABELS[c.category]}

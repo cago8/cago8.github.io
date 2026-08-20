@@ -17,6 +17,8 @@ export interface BodyFrame {
   x: number;
   y: number;
   angle: number;
+  /** Click-feedback wobble, 0 → 1 across its life. 0 (or absent) is at rest. */
+  shake?: number;
 }
 
 export interface Particle {
@@ -296,6 +298,93 @@ function drawCurrents(ctx: CanvasRenderingContext2D, t: number, motion: boolean,
   ctx.restore();
 }
 
+/* -------------------------------------------------------------- reef life */
+
+/** One flat-vector tropical fish, facing +x, drawn at the origin. */
+function drawFish(ctx: CanvasRenderingContext2D, s: number, bodyColor: string) {
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = palette.ink;
+
+  // Tail, notched.
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.58, 0);
+  ctx.lineTo(-s * 1.05, -s * 0.46);
+  ctx.lineTo(-s * 0.8, 0);
+  ctx.lineTo(-s * 1.05, s * 0.46);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dorsal and pelvic fins.
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.08, -s * 0.36);
+  ctx.lineTo(s * 0.12, -s * 0.74);
+  ctx.lineTo(s * 0.3, -s * 0.34);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.02, s * 0.3);
+  ctx.lineTo(s * 0.1, s * 0.58);
+  ctx.lineTo(s * 0.26, s * 0.28);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Body.
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.6, s * 0.4, 0, 0, Math.PI * 2);
+  ctx.fillStyle = bodyColor;
+  ctx.fill();
+
+  // A pale flank stripe, the way a lot of reef fish break up their silhouette.
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.04, 0, s * 0.13, s * 0.4, 0, 0, Math.PI * 2);
+  ctx.fillStyle = palette.sand;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Eye.
+  ctx.beginPath();
+  ctx.arc(s * 0.4, -s * 0.05, s * 0.09, 0, Math.PI * 2);
+  ctx.fillStyle = palette.ink;
+  ctx.fill();
+}
+
+/**
+ * Three loose schools of reef fish, drifting across the water column at
+ * different depths and speeds. Positions come from the same deterministic
+ * hash as the bubble field, so the reef never re-rolls between frames — and
+ * freezes cleanly at t=0 for reduced motion, same as the kelp sway.
+ */
+function drawFishField(ctx: CanvasRenderingContext2D, t: number, motion: boolean, L: Layout) {
+  const bodyColors = [palette.coral, categoryAccent.contact, categoryAccent.skills, palette.aqua];
+  const schools = [
+    { count: 3, size: 22, speed: 24, seed: 401, yMin: 0.2, yMax: 0.4 },
+    { count: 4, size: 15, speed: 18, seed: 613, yMin: 0.38, yMax: 0.58 },
+    { count: 3, size: 10, speed: 12, seed: 887, yMin: 0.56, yMax: 0.72 },
+  ];
+
+  for (const school of schools) {
+    for (let i = 0; i < school.count; i++) {
+      const seed = school.seed + i * 5;
+      const dir = hash(seed) > 0.5 ? 1 : -1;
+      const baseY = L.world.h * (school.yMin + hash(seed + 1) * (school.yMax - school.yMin));
+      const span = L.world.w + 260;
+      const travel = motion ? t * school.speed * dir : 0;
+      const x = ((hash(seed + 2) * span + travel + span * 6) % span) - 130;
+      const bob = motion ? Math.sin(t * 0.9 + hash(seed + 3) * 8) * 10 : 0;
+      const wag = motion ? Math.sin(t * 6 + hash(seed + 4) * 6) * 0.12 : 0;
+
+      ctx.save();
+      ctx.translate(x, baseY + bob);
+      ctx.scale(dir, 1);
+      ctx.rotate(wag);
+      drawFish(ctx, school.size, bodyColors[(school.seed + i) % bodyColors.length]);
+      ctx.restore();
+    }
+  }
+}
+
 /* ----------------------------------------------------------------- seabed */
 
 /**
@@ -453,24 +542,42 @@ function diverFigure(ctx: CanvasRenderingContext2D, kickPhase: number) {
   roundedRect(ctx, -20, -19, 26, 15, 7);
   ctx.fill();
   ctx.stroke();
+  // Tank valve.
+  ctx.fillStyle = palette.sand;
+  roundedRect(ctx, -10, -23, 8, 5, 2);
+  ctx.fill();
 
-  // Fins — two tapered blades, counter-phased.
-  ctx.fillStyle = palette.coral;
+  // Fins — a dark foot pocket plus a tapered blade with a centre rail,
+  // counter-phased so the kick reads as alternating strokes.
   for (const side of [-1, 1]) {
     ctx.save();
     ctx.translate(-24, side * 4);
     ctx.rotate(kickPhase * side * 0.55);
+
+    ctx.fillStyle = palette.ink;
+    roundedRect(ctx, -4, -6, 10, 12, 3);
+    ctx.fill();
+
+    ctx.fillStyle = palette.coral;
     ctx.beginPath();
-    ctx.moveTo(0, -5);
+    ctx.moveTo(4, -5);
     ctx.lineTo(-26, -11 + side * 2);
     ctx.lineTo(-30, side * 3);
-    ctx.lineTo(0, 5);
+    ctx.lineTo(4, 5);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = palette.plate;
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(2, 0);
+    ctx.lineTo(-25, side * 1);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
-  // Body: a tapered capsule, wider at the chest.
+  // Body: a tapered capsule, wider at the chest — the wetsuit.
   ctx.beginPath();
   ctx.moveTo(16, -11);
   ctx.quadraticCurveTo(26, 0, 16, 11);
@@ -480,7 +587,22 @@ function diverFigure(ctx: CanvasRenderingContext2D, kickPhase: number) {
   ctx.fillStyle = palette.coral;
   ctx.fill();
 
-  // Arm, tucked forward.
+  // Weight belt, cinched across the waist, with a small buckle.
+  ctx.save();
+  ctx.strokeStyle = palette.ink;
+  ctx.globalAlpha = 0.6;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-8, -9);
+  ctx.lineTo(-2, 9);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  ctx.fillStyle = palette.plate;
+  roundedRect(ctx, -8, -3, 8, 6, 2);
+  ctx.fill();
+
+  // Arm, tucked forward, ending in a gloved hand.
   ctx.strokeStyle = palette.coral;
   ctx.lineWidth = 6;
   ctx.lineCap = 'round';
@@ -488,21 +610,54 @@ function diverFigure(ctx: CanvasRenderingContext2D, kickPhase: number) {
   ctx.moveTo(6, 6);
   ctx.quadraticCurveTo(20, 10, 27, 3);
   ctx.stroke();
+  ctx.fillStyle = palette.ink;
+  ctx.beginPath();
+  ctx.arc(27, 3, 4, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Head, with mask and the regulator hose looping back to the tank.
+  // Head, with dive mask, strap, and the regulator hose looping to the tank.
   ctx.beginPath();
   ctx.arc(22, -6, 11, 0, Math.PI * 2);
   ctx.fillStyle = palette.sand;
   ctx.fill();
+
+  // Mask strap, arching from the mask over the crown to the nape.
+  ctx.strokeStyle = palette.ink;
+  ctx.globalAlpha = 0.7;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(19, -12);
+  ctx.quadraticCurveTo(12, -19, 10, -8);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Mask lens.
   ctx.fillStyle = palette.plate;
   roundedRect(ctx, 18, -13, 14, 9, 3);
   ctx.fill();
+  ctx.strokeStyle = palette.aqua;
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = 1.5;
+  roundedRect(ctx, 18, -13, 14, 9, 3);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Regulator hose from the mouth back to the tank.
   ctx.strokeStyle = palette.plate;
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(20, 1);
   ctx.quadraticCurveTo(10, 6, 2, 2);
   ctx.stroke();
+
+  // A couple of exhaled bubbles, rising past the mask.
+  ctx.fillStyle = 'rgba(214, 246, 252, 0.75)';
+  ctx.beginPath();
+  ctx.arc(31, -8 + Math.sin(kickPhase) * 1.5, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(35, -13 + Math.sin(kickPhase) * 1.5, 1.3, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** Diver-down flag: red field with a white diagonal, on a short mast. */
@@ -545,6 +700,13 @@ function drawObject(ctx: CanvasRenderingContext2D, f: BodyFrame, state: RenderSt
   ctx.save();
   ctx.translate(f.x, f.y);
   ctx.rotate(f.angle);
+  // A short decaying wobble in the badge's own frame, so a clicked badge
+  // answers the click before its panel has a chance to open.
+  if (f.shake) {
+    const swing = Math.sin(f.shake * Math.PI * 6) * (1 - f.shake);
+    ctx.rotate(swing * 0.11);
+    ctx.translate(swing * 6, 0);
+  }
   // Everything below is drawn at design size; the layout's scale is applied
   // once here so label sizes, tick marks and connector pins shrink in step
   // with the silhouette instead of overflowing it on small screens.
@@ -889,6 +1051,7 @@ export function renderScene(
   if (state.motion) drawBubbleField(ctx, t, L);
   drawCurrents(ctx, t, state.motion, L);
   drawSeabed(ctx, t, state.motion, L);
+  drawFishField(ctx, t, state.motion, L);
 
   for (const f of state.bodies) drawObject(ctx, f, state);
 
