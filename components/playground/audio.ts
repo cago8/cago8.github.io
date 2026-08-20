@@ -140,20 +140,6 @@ export function playOpen() {
   tone(ac, 'triangle', 720, 790, 0.14, 0.055, 0.07);
 }
 
-/** Picking up a badge: a light upward tick. */
-export function playGrab() {
-  const ac = audio();
-  if (!ac) return;
-  tone(ac, 'sine', 340, 460, 0.07, 0.05);
-}
-
-/** Letting go of a dragged badge: a soft downward drop. */
-export function playRelease() {
-  const ac = audio();
-  if (!ac) return;
-  tone(ac, 'sine', 300, 190, 0.09, 0.05);
-}
-
 /** A dragged badge knocking into another badge: a short, woody click. */
 export function playCollide() {
   const ac = audio();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { playBonk, playCollide, playGrab, playOpen, playRelease, playTap, primeAudio } from './audio';
+import { playBonk, playCollide, playOpen, playTap, primeAudio } from './audio';
 import { buildLayout, type Layout } from './layout';
 import { categoryAccent, palette } from './palette';
 import { Panel } from './Panel';
@@ -591,7 +591,6 @@ export function Playground() {
       if (!press.dragging && moved > 6 && motion) {
         press.dragging = true;
         worldRef.current?.beginDrag(press.id, p.x, p.y);
-        playGrab();
       }
       if (press.dragging) worldRef.current?.moveDrag(p.x, p.y);
       return;
@@ -625,7 +624,6 @@ export function Playground() {
     if (!press) return;
     if (press.dragging) {
       worldRef.current?.endDrag();
-      playRelease();
     } else if (!motion) {
       // Without physics there is nothing to collide with, so the click has to
       // keep working — this is the only way a reduced-motion visitor can read
