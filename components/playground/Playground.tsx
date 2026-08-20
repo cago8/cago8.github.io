@@ -57,7 +57,13 @@ export function Playground() {
     boost: false,
   });
   const keysRef = useRef(new Set<string>());
-  const pressRef = useRef<{ id: string; x: number; y: number; dragging: boolean } | null>(null);
+  const pressRef = useRef<{
+    pointerId: number;
+    id: string;
+    x: number;
+    y: number;
+    dragging: boolean;
+  } | null>(null);
   const joystickRef = useRef<{
     pointerId: number;
     x: number;
@@ -548,8 +554,18 @@ export function Playground() {
     event.currentTarget.setPointerCapture(event.pointerId);
 
     if (hit) {
+      // A press (possibly a drag) is already in flight on another pointer —
+      // don't let a second finger/pointer hijack it and orphan the first
+      // drag's constraint in the physics world.
+      if (pressRef.current) return;
       tap(hit.id);
-      pressRef.current = { id: hit.id, x: event.clientX, y: event.clientY, dragging: false };
+      pressRef.current = {
+        pointerId: event.pointerId,
+        id: hit.id,
+        x: event.clientX,
+        y: event.clientY,
+        dragging: false,
+      };
       return;
     }
     if (!motion) return;
@@ -586,7 +602,7 @@ export function Playground() {
       return;
     }
 
-    if (press) {
+    if (press && press.pointerId === event.pointerId) {
       const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y);
       if (!press.dragging && moved > 6 && motion) {
         press.dragging = true;
@@ -616,12 +632,12 @@ export function Playground() {
     }
 
     const press = pressRef.current;
-    pressRef.current = null;
     inputRef.current.kickTarget = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    if (!press) return;
+    if (!press || press.pointerId !== event.pointerId) return;
+    pressRef.current = null;
     if (press.dragging) {
       worldRef.current?.endDrag();
     } else if (!motion) {

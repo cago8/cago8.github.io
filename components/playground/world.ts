@@ -422,6 +422,9 @@ export function createWorld(
     beginDrag(id, x, y) {
       const body = bodies.get(id);
       if (!body) return;
+      // Defensive: never leak the previous drag constraint into the world —
+      // an orphaned one keeps pinning its body at the last drag point forever.
+      if (dragConstraint) Composite.remove(world, dragConstraint);
       dragConstraint = Constraint.create({
         pointA: { x, y },
         bodyB: body,
