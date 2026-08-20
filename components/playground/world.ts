@@ -82,6 +82,13 @@ const DISARM_MARGIN = 36;
 const START_GRACE_MS = 500;
 /** No panel open from momentum a released drag imparted a moment ago. */
 const DRAG_RELEASE_GRACE_MS = 250;
+/**
+ * Minimum closing speed for a badge-on-badge knock to sound. Idle drift is
+ * ≈0.5 (see OPEN_SPEED above), so this sits well above it — high enough to
+ * ignore sway/current jitter, low enough to still catch a gentle bump from a
+ * thrown badge landing on a neighbour.
+ */
+const BADGE_COLLIDE_SPEED = 1.2;
 
 export function createWorld(
   M: Matter,
@@ -215,16 +222,14 @@ export function createWorld(
     for (const pair of event.pairs) {
       const other = pair.bodyA === diver ? pair.bodyB : pair.bodyB === diver ? pair.bodyA : null;
       if (!other) {
-        // Neither side is the diver: a badge-on-badge knock. Only worth a
-        // sound while one of them is being actively dragged — otherwise the
-        // idle sway and current drift would set it off constantly.
-        if (
-          dragConstraint &&
-          (pair.bodyA === dragConstraint.bodyB || pair.bodyB === dragConstraint.bodyB) &&
-          byBodyId.has(pair.bodyA.id) &&
-          byBodyId.has(pair.bodyB.id)
-        ) {
-          onCollide();
+        // Neither side is the diver: a badge-on-badge knock. Gate on closing
+        // speed rather than drag state — idle sway/current drift stays below
+        // BADGE_COLLIDE_SPEED, but a thrown badge still sounds when it lands
+        // on a neighbour, however long after release that happens.
+        if (byBodyId.has(pair.bodyA.id) && byBodyId.has(pair.bodyB.id)) {
+          const rv = Vector.sub(pair.bodyA.velocity, pair.bodyB.velocity);
+          const speed = Vector.magnitude(rv);
+          if (speed >= BADGE_COLLIDE_SPEED) onCollide();
         }
         continue;
       }
