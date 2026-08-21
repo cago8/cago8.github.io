@@ -53,8 +53,8 @@ export interface RenderState {
   flashes: Flash[];
   stamina: number;
   boosting: boolean;
-  /** Where a tap sent the diver, in world units, or null when not swimming to
-   *  a point. */
+  /** The held pointer the diver is steering toward, in world units, or null
+   *  when nobody is steering. */
   swimTarget: { x: number; y: number } | null;
   hoveredId: string | null;
   focusedId: string | null;
@@ -1002,26 +1002,44 @@ function drawStamina(ctx: CanvasRenderingContext2D, state: RenderState) {
 }
 
 /**
- * Where a tap sent the diver: a shrinking ring at the destination, so a touch
- * visitor can see that the tap registered and where it aimed. Drawn in world
- * space, because unlike the joystick it replaced this marks a place in the
- * water rather than a widget on the glass.
+ * Heading indicator: a dashed tether from the diver to the held pointer, with
+ * a ring at the pointer itself.
+ *
+ * This is what makes drag-to-swim legible. Without it a finger resting on the
+ * glass is invisible and the diver looks self-propelled; with it the gesture
+ * reads as steering, which is the entire point of holding rather than tapping.
+ * The tether fades out as the diver closes on the pointer, so it stops drawing
+ * attention exactly when there is no distance left to cover.
  */
-function drawSwimTarget(ctx: CanvasRenderingContext2D, state: RenderState) {
+function drawHeading(ctx: CanvasRenderingContext2D, state: RenderState) {
   const target = state.swimTarget;
   if (!target) return;
-  const pulse = (state.t * 1.6) % 1;
+  const dx = target.x - state.diver.x;
+  const dy = target.y - state.diver.y;
+  const len = Math.hypot(dx, dy);
+  const reach = Math.min(1, len / 90);
+
   ctx.save();
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 7]);
+  ctx.lineDashOffset = -state.t * 26;
+  ctx.strokeStyle = `rgba(70, 212, 200, ${0.42 * reach})`;
+  ctx.beginPath();
+  ctx.moveTo(state.diver.x, state.diver.y);
+  ctx.lineTo(target.x, target.y);
+  ctx.stroke();
+
+  ctx.setLineDash([]);
   ctx.translate(target.x, target.y);
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = `rgba(70, 212, 200, ${0.5 * (1 - pulse)})`;
+  const pulse = 1 + 0.12 * Math.sin(state.t * 5);
+  ctx.strokeStyle = `rgba(70, 212, 200, ${0.35 + 0.4 * reach})`;
   ctx.beginPath();
-  ctx.arc(0, 0, 8 + pulse * 22, 0, Math.PI * 2);
+  ctx.arc(0, 0, 11 * pulse, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(70, 212, 200, 0.7)';
+  ctx.fillStyle = 'rgba(70, 212, 200, 0.55)';
   ctx.beginPath();
-  ctx.arc(0, 0, 7, 0, Math.PI * 2);
-  ctx.stroke();
+  ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -1064,7 +1082,7 @@ export function renderScene(
   for (const f of state.bodies) drawObject(ctx, f, state);
 
   drawBubbles(ctx, state.bubbles);
-  drawSwimTarget(ctx, state);
+  drawHeading(ctx, state);
   drawStamina(ctx, state);
   drawDiver(ctx, state);
   drawFlashes(ctx, state);

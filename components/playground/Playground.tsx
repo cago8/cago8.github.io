@@ -47,10 +47,6 @@ const CATEGORY_ICONS: Record<Category, string> = {
  */
 const COMPACT_QUERY = '(max-width: 768px)';
 
-/** Horizontal travel, in CSS pixels, that turns a touch drag into a tab swipe
- *  rather than a tap. Paired with a 2:1 bias so a diagonal stays a tap. */
-const SWIPE_PX = 56;
-
 /** How long the stage crossfades when the tab changes. The scene is rebuilt
  *  under the fade, so this is also the budget for that rebuild. */
 const TAB_FADE_MS = 190;
@@ -88,14 +84,16 @@ export function Playground() {
     y: number;
     dragging: boolean;
   } | null>(null);
-  /** An in-flight touch on open water: a tap-to-move until it travels far
-   *  enough sideways to be a tab swipe instead. Resolved on pointerup. */
-  const swimRef = useRef<{
-    pointerId: number;
-    x: number;
-    y: number;
-    swiped: boolean;
-  } | null>(null);
+  /**
+   * The one pointer at the helm, or null when nobody is steering.
+   *
+   * Only the pointer that opened the gesture steers. A second finger cannot
+   * take the helm from the first — it boosts instead — so the diver never
+   * jumps between two thumbs. `touch` is carried along because only a finger
+   * earns the on-screen heading indicator: a mouse already has a cursor
+   * showing where it is steering, and a finger has nothing.
+   */
+  const steerRef = useRef<{ pointerId: number; touch: boolean } | null>(null);
   const boostPointerRef = useRef<number | null>(null);
   const flashesRef = useRef<(Flash & { born: number })[]>([]);
   /** Badge id → wall-clock start of its click wobble. Wall clock rather than
@@ -122,8 +120,8 @@ export function Playground() {
   const [compact, setCompact] = useState(false);
   const [tab, setTab] = useState<Category>('profile');
   const [fading, setFading] = useState(false);
-  /** Mirrors `tab` so the swipe handler and `selectTab` can read the current
-   *  one without either of them going stale between renders. */
+  /** Mirrors `tab` so `selectTab` can tell a real change from a re-tap without
+   *  putting side effects inside a state updater. */
   const tabRef = useRef<Category>('profile');
   const fadeTimerRef = useRef(0);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -211,7 +209,10 @@ export function Playground() {
       flashes: flashesRef.current.map((flash) => ({ ...flash, age: now - flash.born })),
       stamina: world?.status.stamina ?? 1,
       boosting: world?.status.boosting ?? false,
-      swimTarget: kickTarget,
+      // Only a finger gets the heading indicator. A mouse has a visible cursor
+      // sitting exactly on the target already, so drawing it there would be
+      // noise — and would change the desktop scene, which this does not.
+      swimTarget: steerRef.current?.touch ? kickTarget : null,
       hoveredId: uiRef.current.hovered,
       focusedId: uiRef.current.focused,
       openId: uiRef.current.open,
@@ -613,21 +614,14 @@ export function Playground() {
       // The panel belongs to an object that is about to leave the water.
       setOpenId(null);
       setHovered(null);
+      // Drop the helm: the water the finger was steering in is being replaced.
+      steerRef.current = null;
       inputRef.current.kickTarget = null;
     },
     [],
   );
 
   useEffect(() => () => window.clearTimeout(fadeTimerRef.current), []);
-
-  const stepTab = useCallback(
-    (delta: number) => {
-      const at = CATEGORY_ORDER.indexOf(tabRef.current);
-      const next = CATEGORY_ORDER[at + delta];
-      if (next) selectTab(next);
-    },
-    [selectTab],
-  );
 
   /* -------------------------------------------------------------- pointer */
 
@@ -637,8 +631,9 @@ export function Playground() {
     const p = toWorld(event.clientX, event.clientY);
     const hit = pick(p.x, p.y);
 
-    if (event.pointerType === 'touch' && !hit && (swimRef.current || inputRef.current.kickTarget)) {
-      // Second finger while already swimming to a point: boost.
+    if (event.pointerType === 'touch' && !hit && steerRef.current) {
+      // Someone already has the helm. A second finger boosts rather than
+      // fighting the first for the heading.
       boostPointerRef.current = event.pointerId;
       inputRef.current.boost = true;
       return;
@@ -663,40 +658,23 @@ export function Playground() {
     }
     if (!motion) return;
 
+    // Take the helm. Mouse and finger are the same gesture now: the diver
+    // swims at the pointer for as long as the pointer is down, and a phone
+    // gets no on-screen stick because the water itself is the control.
     setEngaged(true);
-    if (event.pointerType === 'touch') {
-      // Held open until pointerup, which is where a tap-to-move and a tab
-      // swipe are told apart. A phone gets no on-screen stick: the water is
-      // the control.
-      swimRef.current = {
-        pointerId: event.pointerId,
-        x: event.clientX,
-        y: event.clientY,
-        swiped: false,
-      };
-    } else {
-      inputRef.current.kickTarget = p;
-    }
+    steerRef.current = { pointerId: event.pointerId, touch: event.pointerType === 'touch' };
+    inputRef.current.kickTarget = p;
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const p = toWorld(event.clientX, event.clientY);
     const press = pressRef.current;
 
-    const swim = swimRef.current;
-    if (swim && swim.pointerId === event.pointerId) {
-      // A decisively sideways drag is navigation, not a destination. The 2:1
-      // bias keeps a diagonal flick a tap, so aiming across the water at an
-      // object never costs you the tab you are reading.
-      const dx = event.clientX - swim.x;
-      const dy = event.clientY - swim.y;
-      if (compact && Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 2) {
-        swim.swiped = true;
-      }
-      return;
-    }
-
-    if (press && press.pointerId === event.pointerId) {
+    if (steerRef.current?.pointerId === event.pointerId) {
+      // Direct control: the heading is wherever the pointer is *now*, not a
+      // waypoint chosen once. This is the whole mechanic.
+      inputRef.current.kickTarget = p;
+    } else if (press && press.pointerId === event.pointerId) {
       const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y);
       if (!press.dragging && moved > 6 && motion) {
         press.dragging = true;
@@ -706,12 +684,9 @@ export function Playground() {
       return;
     }
 
-    // Mouse only. A touch target is a destination the finger has already left,
-    // so a second finger sliding across must not drag it around, and there is
-    // no such thing as hover on a phone.
+    // Hover is a mouse idea. A finger has none, and a second finger sliding
+    // across must not repaint the highlight behind the one that is steering.
     if (event.pointerType === 'touch') return;
-
-    if (inputRef.current.kickTarget) inputRef.current.kickTarget = p;
 
     const hit = pick(p.x, p.y);
     const id = hit?.id ?? null;
@@ -724,27 +699,14 @@ export function Playground() {
       inputRef.current.boost = false;
       return;
     }
-    const swim = swimRef.current;
-    if (swim && swim.pointerId === event.pointerId) {
-      swimRef.current = null;
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-      if (swim.swiped) {
-        // Drag left to go forward through the tabs, as on any paged surface.
-        stepTab(event.clientX < swim.x ? 1 : -1);
-      } else if (event.type !== 'pointercancel') {
-        // Tap to move: the target sticks until the diver gets there, and the
-        // world clears it on arrival.
-        inputRef.current.kickTarget = toWorld(event.clientX, event.clientY);
-      }
-      return;
+    if (steerRef.current?.pointerId === event.pointerId) {
+      // Release to stop. Thrust ends with the gesture; the diver keeps its
+      // momentum and drifts, which is what makes the water read as water.
+      steerRef.current = null;
+      inputRef.current.kickTarget = null;
     }
 
     const press = pressRef.current;
-    // Only the mouse holds its target for the length of the press; a touch
-    // target was just set above and has to survive the finger lifting.
-    if (event.pointerType !== 'touch') inputRef.current.kickTarget = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -782,6 +744,10 @@ export function Playground() {
           onPointerUp={endPointer}
           onPointerCancel={endPointer}
           onPointerLeave={() => setHovered(null)}
+          // A held finger is steering, never a request for the selection or
+          // long-press menu. CSS refuses the callout; this refuses the event
+          // itself, which is what Android's long-press actually fires.
+          onContextMenu={(event) => event.preventDefault()}
         />
 
         <h1 className="sr-only">Çağrı Bilginer — game development portfolio</h1>
@@ -891,7 +857,7 @@ export function Playground() {
           {!motion
             ? 'Reduced motion is on — the scene is static. Click or tab to any object to read it.'
             : compact
-              ? 'Tap the water to swim there — swim into anything to open it'
+              ? 'Hold and drag to swim — swim into anything to open it'
               : 'Swim into anything to open it — arrows or WASD, Space to boost'}
           {!ready && <span className="stage-hint-load"> · loading</span>}
         </p>

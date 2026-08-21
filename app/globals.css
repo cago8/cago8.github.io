@@ -420,11 +420,34 @@ button {
   background: var(--deep);
 }
 
+/*
+ * Steering is a press-and-hold on the canvas, which is exactly the gesture a
+ * mobile browser reads as "select this / show me a callout". Every native
+ * interpretation of a held finger has to be refused here or it interrupts the
+ * drag mid-swim: `touch-action` takes scrolling and double-tap zoom,
+ * `user-select` takes the selection callout, and `-webkit-touch-callout` takes
+ * the long-press menu iOS shows regardless of the other two.
+ */
 .stage-canvas {
   display: block;
   width: 100%;
   height: 100%;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* The stage chrome sits over the same held finger — the hint, the HUD and the
+   invisible a11y node layer all have to decline the callout too. */
+.stage,
+.stage-hud,
+.stage-hint,
+.stage-nodes,
+.stage-section-labels {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Crossfade while the reef is rebuilt for a new tab, so a tab change reads as
