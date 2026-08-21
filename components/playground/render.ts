@@ -9,7 +9,8 @@
  * with settled positions and get a static diagram.
  */
 import type { Layout } from './layout';
-import { palette, categoryAccent } from './palette';
+import { drawOctopus } from './octopus';
+import { palette, categoryAccent, waterStops } from './palette';
 import type { SceneObject } from './scene';
 
 export interface BodyFrame {
@@ -43,6 +44,8 @@ export interface Flash {
 export interface RenderState {
   /** Seconds since mount. Frozen at 0 when motion is off. */
   t: number;
+  /** Rolled once per mount; picks which show the octopus runs this visit. */
+  seed: number;
   layout: Layout;
   bodies: BodyFrame[];
   diver: { x: number; y: number; angle: number; kick: number; speed: number };
@@ -152,9 +155,7 @@ function fitLines(
 
 function drawWater(ctx: CanvasRenderingContext2D, L: Layout) {
   const g = ctx.createLinearGradient(0, 0, 0, L.world.h);
-  g.addColorStop(0, palette.waterTop);
-  g.addColorStop(0.42, palette.waterMid);
-  g.addColorStop(1, palette.waterDeep);
+  for (const stop of waterStops) g.addColorStop(stop.at, stop.color);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, L.world.w, L.world.h);
 }
@@ -1051,6 +1052,9 @@ export function renderScene(
   if (state.motion) drawBubbleField(ctx, t, L);
   drawCurrents(ctx, t, state.motion, L);
   drawSeabed(ctx, t, state.motion, L);
+  // Behind the badges and the reef fish, like anything hoping not to be seen —
+  // which is also what lets it tuck under the badge it is hiding against.
+  if (state.motion) drawOctopus(ctx, t, state.seed, L, state.bodies);
   drawFishField(ctx, t, state.motion, L);
 
   for (const f of state.bodies) drawObject(ctx, f, state);

@@ -80,6 +80,9 @@ export function Playground() {
   /** Whether the physics loop is drawing, so the wobble ticker can stay idle. */
   const loopRunningRef = useRef(false);
   const fontsRef = useRef({ sans: 'sans-serif', mono: 'monospace' });
+  /** Rolled once per mount so the octopus runs a different sequence of
+   *  entrances for every visitor. Never rendered, so it cannot mismatch. */
+  const seedRef = useRef(Math.random() * 1000);
   const uiRef = useRef({ hovered: null as string | null, focused: null as string | null, open: null as string | null });
   /** Set once the engine is live; re-evaluates whether the loop should run. */
   const evaluateRef = useRef<(() => void) | null>(null);
@@ -152,6 +155,7 @@ export function Playground() {
     const joystick = joystickRef.current;
     const state: RenderState = {
       t: now,
+      seed: seedRef.current,
       layout: currentLayout,
       bodies,
       diver: world

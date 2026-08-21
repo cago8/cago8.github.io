@@ -11,7 +11,7 @@ export const site = {
     'Game development (Unity, C#) — portfolio of Çağrı Bilginer, Computer Engineering graduate of Koç University. Explore it as a 2D physics playground, or as a plain list.',
   url: 'https://cago8.github.io',
   email: 'cagribilginer60@gmail.com',
-  resume: '/assets/cv.pdf',
+  resume: '/assets/Cagri_Bilginer_CV.pdf',
   location: 'İstanbul, Sarıyer',
   social: {
     github: 'https://github.com/cago8',

@@ -9,7 +9,6 @@ import { ExperienceCard } from './content/ExperienceCard';
 import { ProfileCard } from './content/ProfileCard';
 import { ProjectCard } from './content/ProjectCard';
 import { SkillGroupCard } from './content/SkillGroupCard';
-import { TapSurface } from './TapSurface';
 
 const BODIES = {
   profile: <ProfileCard />,
@@ -45,7 +44,7 @@ const BODIES = {
  */
 export function ListView() {
   return (
-    <TapSurface className="listview">
+    <div className="listview">
       <section className="hero">
         <h1 className="hero-name">
           {site.givenName}
@@ -72,6 +71,6 @@ export function ListView() {
           {BODIES[section.id]}
         </section>
       ))}
-    </TapSurface>
+    </div>
   );
 }
