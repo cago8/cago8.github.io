@@ -3,7 +3,7 @@
 Personal portfolio for a Computer Engineering graduate of Koç University
 applying to game development roles. Next.js (App Router) + TypeScript, no CSS
 framework, deployed as a fully static export to GitHub Pages at
-[cago8.github.io](https://cago8.github.io/).
+[cagribilginer.github.io](https://cagribilginer.github.io/).
 
 ## The idea — Dive Physics Playground
 

@@ -9,12 +9,12 @@ export const site = {
   title: 'Çağrı Bilginer — Game Development Portfolio',
   description:
     'Game development (Unity, C#) — portfolio of Çağrı Bilginer, Computer Engineering graduate of Koç University. Explore it as a 2D physics playground, or as a plain list.',
-  url: 'https://cago8.github.io',
+  url: 'https://cagribilginer.github.io',
   email: 'cagribilginer60@gmail.com',
   resume: '/assets/Cagri_Bilginer_CV.pdf',
   location: 'İstanbul, Sarıyer',
   social: {
-    github: 'https://github.com/cago8',
+    github: 'https://github.com/cagribilginer',
     linkedin: 'https://www.linkedin.com/in/cagribilginer',
     instagram: 'https://www.instagram.com/cagri.bilginer',
     x: 'https://twitter.com/cagri_bilginer',
@@ -32,7 +32,7 @@ export interface SocialLink {
 }
 
 export const socialLinks: SocialLink[] = [
-  { label: 'GitHub', href: site.social.github, handle: 'cago8' },
+  { label: 'GitHub', href: site.social.github, handle: 'cagribilginer' },
   { label: 'LinkedIn', href: site.social.linkedin, handle: 'cagribilginer' },
   { label: 'Instagram', href: site.social.instagram, handle: 'cagri.bilginer' },
   { label: 'X', href: site.social.x, handle: 'cagri_bilginer' },

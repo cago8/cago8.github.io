@@ -33,7 +33,7 @@ export const projects: Project[] = [
     links: [
       {
         label: 'Code',
-        href: 'https://github.com/cago8/RokueQuest-A-Roguelike-Adventure-with-Java',
+        href: 'https://github.com/cagribilginer/RokueQuest-A-Roguelike-Adventure-with-Java',
       },
     ],
     image: '/assets/projects/project4.webp',
@@ -68,7 +68,7 @@ export const projects: Project[] = [
     summary:
       'Desktop Java social app inspired by Instagram: authentication, photo sharing, likes and comments, profiles, discovery, and a layered architecture behind a Swing UI.',
     technologies: ['Java', 'Swing', 'OOP', 'Desktop UI'],
-    links: [{ label: 'Code', href: 'https://github.com/cago8/PhotoCloud' }],
+    links: [{ label: 'Code', href: 'https://github.com/cagribilginer/PhotoCloud' }],
     image: '/assets/projects/project5.webp',
   },
 ];
