@@ -1193,25 +1193,72 @@ button {
   }
 
   .stage-hint {
-    font-size: 0.66rem;
+    font-size: 0.64rem;
     left: 8px;
     top: 8px;
     right: 8px;
     max-width: none;
+    padding: 0.45rem 0.8rem;
+    line-height: 1.35;
   }
 
-  /* The HUD keeps out of the lower-left corner, where the joystick appears. */
+  /*
+   * On a phone this bar sits directly over the diver's spawn point and the
+   * joystick's touch zone, and the browser's own address bar crowds it from
+   * below — so it has to stay a single slim row (never wrap to two) and clear
+   * the device's safe area, or it hides the very thing it is floating over.
+   */
   .stage-hud {
-    left: auto;
-    right: 10px;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     transform: none;
-    max-width: calc(100% - 20px);
-    justify-content: flex-end;
+    max-width: none;
+    width: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0.3rem;
+    padding: 0.25rem;
+  }
+
+  .stage-hud::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stage-legend {
+    flex-wrap: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
   }
 
   .stage-legend button {
-    padding: 0.3rem 0.55rem;
+    flex: 0 0 auto;
+    padding: 0.32rem 0.55rem;
     font-size: 0.72rem;
+    gap: 0.35rem;
+  }
+
+  /* The section headers floating over each cluster already name it, so the
+     legend only needs to jump to it — drop the redundant word and keep the
+     color swatch + count, which is what makes the whole bar fit one row. */
+  .stage-legend .legend-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .stage-hud .btn--sm {
+    flex: 0 0 auto;
+    padding: 0.28rem 0.6rem;
+    font-size: 0.68rem;
   }
 
   .profile-split {

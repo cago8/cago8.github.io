@@ -760,7 +760,7 @@ export function Playground() {
                       style={{ background: categoryAccent[category], borderColor: palette.plate }}
                       aria-hidden="true"
                     />
-                    {CATEGORY_LABELS[category]}
+                    <span className="legend-label">{CATEGORY_LABELS[category]}</span>
                     <span className="count">{count}</span>
                   </button>
                 </li>
