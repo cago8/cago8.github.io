@@ -34,17 +34,25 @@ export function Portfolio({ listView }: { listView: ReactNode }) {
         </div>
 
         <div className="masthead-actions">
-          {view === 'play' && (
-            <button
-              type="button"
-              className="btn btn--ghost btn--icon"
-              aria-pressed={!muted}
-              onClick={() => setMuted(!muted)}
-            >
-              <span aria-hidden="true">{muted ? '🔇' : '🔊'}</span>
-              <span className="sr-only">{muted ? 'Turn sound on' : 'Turn sound off'}</span>
-            </button>
-          )}
+          {/*
+            The mute button only exists in play view, but its slot always does.
+            Without a reserved slot the view switcher jumps sideways the moment
+            you leave the playground — and it is the control you just used, so
+            it is the one thing that must not move under your finger.
+          */}
+          <div className="masthead-mute">
+            {view === 'play' && (
+              <button
+                type="button"
+                className="btn btn--ghost btn--icon"
+                aria-pressed={!muted}
+                onClick={() => setMuted(!muted)}
+              >
+                <span aria-hidden="true">{muted ? '🔇' : '🔊'}</span>
+                <span className="sr-only">{muted ? 'Turn sound on' : 'Turn sound off'}</span>
+              </button>
+            )}
+          </div>
           <div className="switch" role="group" aria-label="Choose how to browse this site">
             <button
               type="button"

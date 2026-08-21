@@ -18,13 +18,19 @@
 import type MatterNamespace from 'matter-js';
 import type { Layout } from './layout';
 import type { Particle } from './render';
-import { sceneObjects, type SceneObject } from './scene';
+import type { SceneObject } from './scene';
 
 type Matter = typeof MatterNamespace;
 type Body = MatterNamespace.Body;
 
+/** How close to a tapped point counts as having got there. */
+const ARRIVE_R = 14;
+
 export interface Input {
-  /** World-space point the diver is kicking toward, or null. */
+  /**
+   * World-space point the diver is kicking toward, or null. The world clears
+   * this once the diver arrives, so the caller can set it and forget it.
+   */
   kickTarget: { x: number; y: number } | null;
   /** Currently held arrow/WASD directions, as a unit-ish vector. */
   keyVec: { x: number; y: number };
@@ -148,7 +154,7 @@ export function createWorld(
   }
 
   /* ---------------------------- content bodies ---------------------------- */
-  for (const obj of sceneObjects) {
+  for (const obj of current.objects) {
     const place = current.placements.get(obj.id)!;
     const options = {
       density: 0.0004,
@@ -328,9 +334,16 @@ export function createWorld(
     if (input.kickTarget) {
       const d = Vector.sub(input.kickTarget, diver.position);
       const len = Vector.magnitude(d);
-      if (len > 10) {
+      if (len > ARRIVE_R) {
         push.x += d.x / len;
         push.y += d.y / len;
+      } else {
+        // Arrived. Dropping the target here is what makes a tap a trip with an
+        // end rather than a heading the diver holds forever — and it is the
+        // world's call, since only the world knows where the diver got to. A
+        // held mouse press re-sets the target every pointermove, so tracking
+        // the cursor is unaffected.
+        input.kickTarget = null;
       }
     }
     const pushLen = Math.hypot(push.x, push.y);
@@ -479,7 +492,7 @@ export function createWorld(
       });
     },
     settle() {
-      for (const obj of sceneObjects) {
+      for (const obj of current.objects) {
         const body = bodies.get(obj.id);
         const place = current.placements.get(obj.id);
         if (!body || !place) continue;

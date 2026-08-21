@@ -292,6 +292,18 @@ button {
   gap: 0.75rem;
 }
 
+/*
+ * Fixed-width slot for the mute button, which is only rendered in play view.
+ * Reserving the space unconditionally is what keeps the view switcher pinned:
+ * the switcher's position must not depend on which view you are in.
+ */
+.masthead-mute {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  width: 2.6rem;
+}
+
 /* Segmented control. Always visible — this is the accessibility escape hatch. */
 .switch {
   display: inline-flex;
@@ -413,6 +425,92 @@ button {
   width: 100%;
   height: 100%;
   touch-action: none;
+}
+
+/* Crossfade while the reef is rebuilt for a new tab, so a tab change reads as
+   navigation rather than as every object teleporting at once. */
+.stage--fading .stage-canvas,
+.stage--fading .stage-section-labels {
+  opacity: 0.15;
+}
+
+.stage-canvas,
+.stage-section-labels {
+  transition: opacity 190ms ease;
+}
+
+/*
+ * Mobile tab bar. Display is the switch: `none` here and `flex` inside the
+ * breakpoint, so the desktop composition never sees it.
+ */
+.stage-tabs {
+  display: none;
+}
+
+.stage-tabs ul {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Equal shares of the bar, so the tap target is the whole column rather than
+   just the width of its own label — "Skills" must not be harder to hit than
+   "Experience". `min-width: 0` lets the widest label shrink rather than
+   pushing the row wide. */
+.stage-tabs li {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.stage-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 100%;
+  /* Comfortably past the 44px touch minimum, safe area handled on the bar. */
+  min-height: 52px;
+  padding: 0.35rem 0.2rem 0.45rem;
+  border: 0;
+  background: transparent;
+  color: rgba(245, 239, 227, 0.62);
+  cursor: pointer;
+  transition: color 0.18s ease;
+}
+
+.stage-tab-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.stage-tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The active marker. Scaled rather than shown/hidden so it slides in. */
+.stage-tab-rule {
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  border-radius: 999px;
+  transform: scaleX(0);
+  transition: transform 0.18s ease;
+}
+
+.stage-tab[aria-current='true'] .stage-tab-rule {
+  transform: scaleX(1);
 }
 
 /*
@@ -1166,7 +1264,9 @@ button {
 
 /* ------------------------------------------------------------ responsive */
 
-@media (max-width: 760px) {
+/* Kept in lockstep with COMPACT_QUERY in Playground.tsx: below this width the
+   scene is shown one category at a time behind the tab bar. */
+@media (max-width: 768px) {
   .masthead {
     justify-content: flex-start;
     padding: 0.6rem var(--gutter);
@@ -1182,14 +1282,44 @@ button {
     font-size: 0.62rem;
   }
 
+  .masthead-mute {
+    width: 2.9rem;
+  }
+
+  /* Touch targets: 44px minimum on everything in the masthead. */
   .switch button {
-    padding: 0.35rem 0.7rem;
-    font-size: 0.78rem;
+    min-height: 44px;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.82rem;
   }
 
   .btn {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.8rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.84rem;
+  }
+
+  /* -------------------------------------------------------- tab layout */
+
+  .playground {
+    flex-direction: column;
+  }
+
+  .stage-tabs {
+    display: block;
+    flex: 0 0 auto;
+    background: var(--plate);
+    border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* The legend is a jump list across five clusters; below the breakpoint only
+     one cluster exists at a time and the tab bar names it, so it has nothing
+     left to say. */
+  .stage-legend {
+    display: none;
   }
 
   .stage-hint {
@@ -1203,62 +1333,27 @@ button {
   }
 
   /*
-   * On a phone this bar sits directly over the diver's spawn point and the
-   * joystick's touch zone, and the browser's own address bar crowds it from
-   * below — so it has to stay a single slim row (never wrap to two) and clear
-   * the device's safe area, or it hides the very thing it is floating over.
+   * With the legend gone this bar carries only Reset, so it shrinks to that
+   * one control and tucks into the corner above the tab bar — which now owns
+   * the bottom edge and the device's safe area.
    */
   .stage-hud {
-    left: 8px;
+    left: auto;
     right: 8px;
-    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    bottom: 8px;
     transform: none;
     max-width: none;
     width: auto;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    justify-content: flex-end;
     gap: 0.3rem;
     padding: 0.25rem;
   }
 
-  .stage-hud::-webkit-scrollbar {
-    display: none;
-  }
-
-  .stage-legend {
-    flex-wrap: nowrap;
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-
-  .stage-legend button {
-    flex: 0 0 auto;
-    padding: 0.32rem 0.55rem;
-    font-size: 0.72rem;
-    gap: 0.35rem;
-  }
-
-  /* The section headers floating over each cluster already name it, so the
-     legend only needs to jump to it — drop the redundant word and keep the
-     color swatch + count, which is what makes the whole bar fit one row. */
-  .stage-legend .legend-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
   .stage-hud .btn--sm {
     flex: 0 0 auto;
-    padding: 0.28rem 0.6rem;
-    font-size: 0.68rem;
+    min-height: 36px;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.72rem;
   }
 
   .profile-split {

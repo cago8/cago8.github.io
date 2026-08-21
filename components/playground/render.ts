@@ -53,8 +53,9 @@ export interface RenderState {
   flashes: Flash[];
   stamina: number;
   boosting: boolean;
-  /** Touch joystick, in CSS pixels — drawn in screen space, not world space. */
-  joystick: { x: number; y: number; dx: number; dy: number } | null;
+  /** Where a tap sent the diver, in world units, or null when not swimming to
+   *  a point. */
+  swimTarget: { x: number; y: number } | null;
   hoveredId: string | null;
   focusedId: string | null;
   openId: string | null;
@@ -1000,24 +1001,27 @@ function drawStamina(ctx: CanvasRenderingContext2D, state: RenderState) {
   ctx.restore();
 }
 
-/** Touch joystick, drawn in screen space so it never scales with the world. */
-function drawJoystick(ctx: CanvasRenderingContext2D, state: RenderState) {
-  const j = state.joystick;
-  if (!j) return;
+/**
+ * Where a tap sent the diver: a shrinking ring at the destination, so a touch
+ * visitor can see that the tap registered and where it aimed. Drawn in world
+ * space, because unlike the joystick it replaced this marks a place in the
+ * water rather than a widget on the glass.
+ */
+function drawSwimTarget(ctx: CanvasRenderingContext2D, state: RenderState) {
+  const target = state.swimTarget;
+  if (!target) return;
+  const pulse = (state.t * 1.6) % 1;
   ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.translate(j.x, j.y);
-  ctx.beginPath();
-  ctx.arc(0, 0, 48, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(6, 27, 44, 0.45)';
-  ctx.fill();
+  ctx.translate(target.x, target.y);
   ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(70, 212, 200, 0.55)';
-  ctx.stroke();
+  ctx.strokeStyle = `rgba(70, 212, 200, ${0.5 * (1 - pulse)})`;
   ctx.beginPath();
-  ctx.arc(j.dx * 48, j.dy * 48, 20, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(245, 239, 227, 0.85)';
-  ctx.fill();
+  ctx.arc(0, 0, 8 + pulse * 22, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(70, 212, 200, 0.7)';
+  ctx.beginPath();
+  ctx.arc(0, 0, 7, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -1060,11 +1064,10 @@ export function renderScene(
   for (const f of state.bodies) drawObject(ctx, f, state);
 
   drawBubbles(ctx, state.bubbles);
+  drawSwimTarget(ctx, state);
   drawStamina(ctx, state);
   drawDiver(ctx, state);
   drawFlashes(ctx, state);
 
   ctx.restore();
-
-  drawJoystick(ctx, state);
 }

@@ -64,6 +64,17 @@ export interface Pinnacle {
 
 export interface Layout {
   mode: LayoutMode;
+  /**
+   * The cast actually present in this layout, in scene order.
+   *
+   * Normally every object in `sceneObjects`; on the mobile tab layout only the
+   * focused category's. It is the single answer to "what is in the water right
+   * now" — physics, hit testing, the a11y node list and the renderer all read
+   * it, so no consumer can disagree with `placements` about who exists.
+   */
+  objects: SceneObject[];
+  /** The category this layout is narrowed to, or null when all are present. */
+  focus: Category | null;
   /** Resolved object scale — the renderer sizes labels with it. */
   scale: number;
   world: { w: number; h: number };
@@ -153,9 +164,33 @@ const MODES: Record<LayoutMode, ModeSpec> = {
   },
 };
 
-/** Below this fraction of the world height, portrait keeps the water empty so
- *  the touch joystick never lands on top of an object. */
+/** Below this fraction of the world height, portrait keeps the water empty:
+ *  it is the diver's own lane, kept free of objects to spawn and rest in. */
 export const PORTRAIT_CLEAR_Y = 0.82;
+
+/**
+ * The mobile tab layout: one category at a time, given the whole stage.
+ *
+ * A phone cannot show five clusters at a readable size, so the tab bar trades
+ * breadth for size — the band is deliberately generous and the scale ceiling is
+ * the full 1, because six hexes alone in a portrait window should be big enough
+ * to read and big enough to hit, not shrunk to fit neighbours that are not
+ * there. The lower fifth stays clear for the diver, as in `portrait`.
+ */
+const FOCUS_SPEC: ModeSpec = {
+  maxScale: 1,
+  bands: (() => {
+    const band: Band = { x0: 0.06, y0: 0.08, x1: 0.94, y1: 0.68 };
+    return {
+      profile: band,
+      experience: band,
+      skills: band,
+      projects: band,
+      contact: band,
+    };
+  })(),
+  diver: { x: 0.5, y: 0.82 },
+};
 
 export function modeFor(aspect: number): LayoutMode {
   if (aspect < 0.95) return 'portrait';
@@ -238,10 +273,14 @@ const SCALE_STEP = 0.05;
  * phone, and guessing one produces exactly the off-screen objects this search
  * rules out.
  */
-function scaleFor(spec: ModeSpec, world: { w: number; h: number }): number {
+function scaleFor(
+  spec: ModeSpec,
+  world: { w: number; h: number },
+  cast: [Category, SceneObject[]][],
+): number {
   for (let scale = spec.maxScale; scale > SCALE_FLOOR; scale -= SCALE_STEP) {
     let ok = true;
-    for (const [category, objects] of byCategory) {
+    for (const [category, objects] of cast) {
       const band = spec.bands[category];
       const bw = (band.x1 - band.x0) * world.w;
       const bh = (band.y1 - band.y0) * world.h;
@@ -322,16 +361,24 @@ const CURRENT_SPEC: { fx0: number; fy0: number; fw: number; fh: number; fx: numb
 
 /* ------------------------------------------------------------------ builder */
 
-export function buildLayout(aspect: number): Layout {
+/**
+ * @param focus When set, only that category is placed and it is given the whole
+ *   stage — the mobile tab layout. When null, every category is placed at once,
+ *   which is the desktop composition and the only thing that has ever existed.
+ */
+export function buildLayout(aspect: number, focus: Category | null = null): Layout {
   const mode = modeFor(aspect);
-  const spec = MODES[mode];
+  const spec = focus ? FOCUS_SPEC : MODES[mode];
   const world = worldFor(aspect);
-  const scale = scaleFor(spec, world);
+  const cast: [Category, SceneObject[]][] = focus
+    ? [[focus, byCategory.get(focus)!]]
+    : [...byCategory];
+  const scale = scaleFor(spec, world, cast);
   const seabedY = world.h * 0.905;
   const vScale = world.h / NOMINAL_H;
 
   const placements = new Map<string, Placement>();
-  for (const [category, objects] of byCategory) {
+  for (const [category, objects] of cast) {
     const cell = cellsFor(objects, scale);
     const points = packBand(spec.bands[category], world, objects.length, cell.w, cell.h);
     objects.forEach((obj, i) => {
@@ -347,6 +394,8 @@ export function buildLayout(aspect: number): Layout {
 
   return {
     mode,
+    objects: focus ? sceneObjects.filter((o) => o.category === focus) : sceneObjects,
+    focus,
     scale,
     world,
     seabedY,

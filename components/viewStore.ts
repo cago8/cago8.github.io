@@ -19,9 +19,11 @@ function read(): ViewMode {
   } catch {
     /* private browsing — fall through to the viewport default */
   }
-  // A 1600×1000 play space is cramped on a phone, so small screens start in
-  // the list. The toggle stays available either way.
-  return window.matchMedia('(max-width: 760px)').matches ? 'list' : 'play';
+  // Every screen starts in the playground now. Small ones used to start in the
+  // list because the whole reef at once was unreadable on a phone — the tab
+  // layout shows one category at a time instead, so that reason is gone. The
+  // toggle stays available either way.
+  return 'play';
 }
 
 export function subscribeView(onChange: () => void) {

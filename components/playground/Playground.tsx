@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { playBonk, playCollide, playOpen, playTap, primeAudio } from './audio';
 import { buildLayout, type Layout } from './layout';
-import { categoryAccent, palette } from './palette';
+import { categoryAccent, palette, type Category } from './palette';
 import { Panel } from './Panel';
 import { renderScene, type BodyFrame, type Flash, type RenderState } from './render';
 import { CATEGORY_ORDER, sceneObjects, type SceneObject } from './scene';
@@ -30,6 +30,30 @@ const CATEGORY_LABELS = {
 /** How long a clicked badge wobbles, in milliseconds. Short on purpose: it is
  *  feedback for the click, not a wait before the panel. */
 const SHAKE_MS = 260;
+
+/** Icons for the mobile tab bar. Decorative — every tab has a real label. */
+const CATEGORY_ICONS: Record<Category, string> = {
+  profile: '◎',
+  experience: '⬡',
+  skills: '◕',
+  projects: '▤',
+  contact: '✉',
+};
+
+/**
+ * The mobile layout's breakpoint. Kept in lockstep with the `max-width: 768px`
+ * block in globals.css: below it the scene is shown one category at a time
+ * behind a tab bar, because five clusters cannot be read at a phone's size.
+ */
+const COMPACT_QUERY = '(max-width: 768px)';
+
+/** Horizontal travel, in CSS pixels, that turns a touch drag into a tab swipe
+ *  rather than a tap. Paired with a 2:1 bias so a diagonal stays a tap. */
+const SWIPE_PX = 56;
+
+/** How long the stage crossfades when the tab changes. The scene is rebuilt
+ *  under the fade, so this is also the budget for that rebuild. */
+const TAB_FADE_MS = 190;
 
 /** Held keys → swim direction. */
 const KEY_VECTORS: Record<string, [number, number]> = {
@@ -64,12 +88,13 @@ export function Playground() {
     y: number;
     dragging: boolean;
   } | null>(null);
-  const joystickRef = useRef<{
+  /** An in-flight touch on open water: a tap-to-move until it travels far
+   *  enough sideways to be a tab swipe instead. Resolved on pointerup. */
+  const swimRef = useRef<{
     pointerId: number;
     x: number;
     y: number;
-    dx: number;
-    dy: number;
+    swiped: boolean;
   } | null>(null);
   const boostPointerRef = useRef<number | null>(null);
   const flashesRef = useRef<(Flash & { born: number })[]>([]);
@@ -92,6 +117,15 @@ export function Playground() {
   const [motion, setMotion] = useState(true);
   const [ready, setReady] = useState(false);
   const [layout, setLayout] = useState<Layout | null>(null);
+  /** False on the server and on the first client render, so hydration matches;
+   *  the effect below corrects it before paint on a phone. */
+  const [compact, setCompact] = useState(false);
+  const [tab, setTab] = useState<Category>('profile');
+  const [fading, setFading] = useState(false);
+  /** Mirrors `tab` so the swipe handler and `selectTab` can read the current
+   *  one without either of them going stale between renders. */
+  const tabRef = useRef<Category>('profile');
+  const fadeTimerRef = useRef(0);
   const [hovered, setHovered] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -104,16 +138,22 @@ export function Playground() {
     [openId],
   );
 
+  /** The category the scene is narrowed to, or null for the full composition.
+   *  Desktop is never narrowed, which is what keeps it unchanged. */
+  const focus = compact ? tab : null;
+
   // Floating labels above the multi-object clusters — Profile and Contact are
   // single objects and already self-explanatory, so only the groups get one.
+  // The tab bar names the one visible cluster on mobile, so they are dropped
+  // there rather than repeating the active tab over its own objects.
   const clusterLabels = useMemo(() => {
-    if (!layout) return [];
+    if (!layout || layout.focus) return [];
     const categories: (typeof CATEGORY_ORDER)[number][] = ['experience', 'skills', 'projects'];
     return categories.map((category) => {
       let top = Infinity;
       let left = Infinity;
       let right = -Infinity;
-      for (const obj of sceneObjects) {
+      for (const obj of layout.objects) {
         if (obj.category !== category) continue;
         const place = layout.placements.get(obj.id)!;
         top = Math.min(top, place.y - place.hh);
@@ -138,7 +178,7 @@ export function Playground() {
 
     const world = worldRef.current;
     const wall = performance.now();
-    const bodies: BodyFrame[] = sceneObjects.map((obj) => {
+    const bodies: BodyFrame[] = currentLayout.objects.map((obj) => {
       const body = world?.bodies.get(obj.id);
       const place = currentLayout.placements.get(obj.id)!;
       const born = shakesRef.current.get(obj.id);
@@ -152,7 +192,7 @@ export function Playground() {
     const now = clockRef.current.t;
     flashesRef.current = flashesRef.current.filter((flash) => now - flash.born < 0.8);
 
-    const joystick = joystickRef.current;
+    const kickTarget = inputRef.current.kickTarget;
     const state: RenderState = {
       t: now,
       seed: seedRef.current,
@@ -163,7 +203,7 @@ export function Playground() {
             x: world.diver.position.x,
             y: world.diver.position.y,
             angle: world.diver.angle,
-            kick: inputRef.current.kickTarget || keysRef.current.size || joystick ? 1 : 0,
+            kick: kickTarget || keysRef.current.size ? 1 : 0,
             speed: Math.hypot(world.diver.velocity.x, world.diver.velocity.y),
           }
         : { ...currentLayout.diverStart, angle: 0, kick: 0, speed: 0 },
@@ -171,7 +211,7 @@ export function Playground() {
       flashes: flashesRef.current.map((flash) => ({ ...flash, age: now - flash.born })),
       stamina: world?.status.stamina ?? 1,
       boosting: world?.status.boosting ?? false,
-      joystick: joystick ? { x: joystick.x, y: joystick.y, dx: joystick.dx, dy: joystick.dy } : null,
+      swimTarget: kickTarget,
       hoveredId: uiRef.current.hovered,
       focusedId: uiRef.current.focused,
       openId: uiRef.current.open,
@@ -195,6 +235,16 @@ export function Playground() {
     document.fonts?.ready.then(() => draw());
   }, [draw]);
 
+  /* ------------------------------------------------------- compact layout */
+
+  useEffect(() => {
+    const query = window.matchMedia(COMPACT_QUERY);
+    const apply = () => setCompact(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
+
   useEffect(() => {
     const stage = stageRef.current;
     const canvas = canvasRef.current;
@@ -211,7 +261,7 @@ export function Playground() {
       canvas.style.width = `${rect.width}px`;
       canvas.style.height = `${rect.height}px`;
 
-      const next = buildLayout(rect.width / rect.height);
+      const next = buildLayout(rect.width / rect.height, focus);
       layoutRef.current = next;
       worldRef.current?.applyLayout(next);
       setLayout(next);
@@ -241,7 +291,7 @@ export function Playground() {
       window.clearTimeout(timer);
       observer.disconnect();
     };
-  }, [draw]);
+  }, [draw, focus]);
 
   /* --------------------------------------------------- reduced motion pref */
 
@@ -343,7 +393,10 @@ export function Playground() {
       worldRef.current = null;
       evaluateRef.current = null;
     };
-  }, [motion, hasLayout, draw]);
+    // `focus` is a dependency because the cast itself changes with it: the
+    // world is built from `layout.objects`, and matter-js has no way to swap a
+    // composite's contents, so a tab change rebuilds the engine.
+  }, [motion, hasLayout, draw, focus]);
 
   /* ------------------------------------------------------- click feedback */
 
@@ -435,8 +488,8 @@ export function Playground() {
     if (worldRef.current) return worldRef.current.pick(x, y);
     const current = layoutRef.current;
     if (!current) return null;
-    for (let i = sceneObjects.length - 1; i >= 0; i--) {
-      const obj = sceneObjects[i];
+    for (let i = current.objects.length - 1; i >= 0; i--) {
+      const obj = current.objects[i];
       const place = current.placements.get(obj.id)!;
       const dx = x - place.x;
       const dy = y - place.y;
@@ -464,6 +517,7 @@ export function Playground() {
   const resetScene = useCallback(() => {
     worldRef.current?.settle();
     flashesRef.current = [];
+    inputRef.current.kickTarget = null;
     draw();
   }, [draw]);
 
@@ -540,6 +594,41 @@ export function Playground() {
     };
   }, [motion, applyKeyVector, resetScene]);
 
+  /* ------------------------------------------------------------------ tabs */
+
+  /**
+   * Switch the visible category. The stage crossfades rather than cutting: the
+   * whole reef is being rebuilt underneath, and an instant swap of every object
+   * reads as a glitch rather than as navigation.
+   */
+  const selectTab = useCallback(
+    (next: Category) => {
+      if (next === tabRef.current) return;
+      tabRef.current = next;
+      playTap();
+      setTab(next);
+      setFading(true);
+      window.clearTimeout(fadeTimerRef.current);
+      fadeTimerRef.current = window.setTimeout(() => setFading(false), TAB_FADE_MS);
+      // The panel belongs to an object that is about to leave the water.
+      setOpenId(null);
+      setHovered(null);
+      inputRef.current.kickTarget = null;
+    },
+    [],
+  );
+
+  useEffect(() => () => window.clearTimeout(fadeTimerRef.current), []);
+
+  const stepTab = useCallback(
+    (delta: number) => {
+      const at = CATEGORY_ORDER.indexOf(tabRef.current);
+      const next = CATEGORY_ORDER[at + delta];
+      if (next) selectTab(next);
+    },
+    [selectTab],
+  );
+
   /* -------------------------------------------------------------- pointer */
 
   const onPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -548,8 +637,8 @@ export function Playground() {
     const p = toWorld(event.clientX, event.clientY);
     const hit = pick(p.x, p.y);
 
-    if (event.pointerType === 'touch' && joystickRef.current && !hit) {
-      // Second finger while steering: boost.
+    if (event.pointerType === 'touch' && !hit && (swimRef.current || inputRef.current.kickTarget)) {
+      // Second finger while already swimming to a point: boost.
       boostPointerRef.current = event.pointerId;
       inputRef.current.boost = true;
       return;
@@ -576,13 +665,14 @@ export function Playground() {
 
     setEngaged(true);
     if (event.pointerType === 'touch') {
-      const rect = event.currentTarget.getBoundingClientRect();
-      joystickRef.current = {
+      // Held open until pointerup, which is where a tap-to-move and a tab
+      // swipe are told apart. A phone gets no on-screen stick: the water is
+      // the control.
+      swimRef.current = {
         pointerId: event.pointerId,
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-        dx: 0,
-        dy: 0,
+        x: event.clientX,
+        y: event.clientY,
+        swiped: false,
       };
     } else {
       inputRef.current.kickTarget = p;
@@ -593,16 +683,16 @@ export function Playground() {
     const p = toWorld(event.clientX, event.clientY);
     const press = pressRef.current;
 
-    const joystick = joystickRef.current;
-    if (joystick && joystick.pointerId === event.pointerId) {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const dx = event.clientX - rect.left - joystick.x;
-      const dy = event.clientY - rect.top - joystick.y;
-      const len = Math.hypot(dx, dy) || 1;
-      const clamped = Math.min(1, len / 48);
-      joystick.dx = (dx / len) * clamped;
-      joystick.dy = (dy / len) * clamped;
-      inputRef.current.keyVec = { x: dx / len, y: dy / len };
+    const swim = swimRef.current;
+    if (swim && swim.pointerId === event.pointerId) {
+      // A decisively sideways drag is navigation, not a destination. The 2:1
+      // bias keeps a diagonal flick a tap, so aiming across the water at an
+      // object never costs you the tab you are reading.
+      const dx = event.clientX - swim.x;
+      const dy = event.clientY - swim.y;
+      if (compact && Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 2) {
+        swim.swiped = true;
+      }
       return;
     }
 
@@ -615,6 +705,11 @@ export function Playground() {
       if (press.dragging) worldRef.current?.moveDrag(p.x, p.y);
       return;
     }
+
+    // Mouse only. A touch target is a destination the finger has already left,
+    // so a second finger sliding across must not drag it around, and there is
+    // no such thing as hover on a phone.
+    if (event.pointerType === 'touch') return;
 
     if (inputRef.current.kickTarget) inputRef.current.kickTarget = p;
 
@@ -629,14 +724,27 @@ export function Playground() {
       inputRef.current.boost = false;
       return;
     }
-    const joystick = joystickRef.current;
-    if (joystick && joystick.pointerId === event.pointerId) {
-      joystickRef.current = null;
-      inputRef.current.keyVec = { x: 0, y: 0 };
+    const swim = swimRef.current;
+    if (swim && swim.pointerId === event.pointerId) {
+      swimRef.current = null;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      if (swim.swiped) {
+        // Drag left to go forward through the tabs, as on any paged surface.
+        stepTab(event.clientX < swim.x ? 1 : -1);
+      } else if (event.type !== 'pointercancel') {
+        // Tap to move: the target sticks until the diver gets there, and the
+        // world clears it on arrival.
+        inputRef.current.kickTarget = toWorld(event.clientX, event.clientY);
+      }
+      return;
     }
 
     const press = pressRef.current;
-    inputRef.current.kickTarget = null;
+    // Only the mouse holds its target for the length of the press; a touch
+    // target was just set above and has to survive the finger lifting.
+    if (event.pointerType !== 'touch') inputRef.current.kickTarget = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -659,7 +767,11 @@ export function Playground() {
 
   return (
     <div className="playground">
-      <div className="stage" ref={stageRef} tabIndex={-1}>
+      <div
+        className={`stage${fading ? ' stage--fading' : ''}`}
+        ref={stageRef}
+        tabIndex={-1}
+      >
         <canvas
           ref={canvasRef}
           className="stage-canvas"
@@ -687,7 +799,7 @@ export function Playground() {
         */}
         <ul className="stage-nodes">
           {layout &&
-            sceneObjects.map((obj) => {
+            layout.objects.map((obj) => {
               const place = layout.placements.get(obj.id)!;
               return (
                 <li key={obj.id}>
@@ -776,12 +888,49 @@ export function Playground() {
 
         {/* Onboarding, not chrome: it steps aside once the visitor is moving. */}
         <p className={`stage-hint${engaged ? ' stage-hint--faded' : ''}`}>
-          {motion
-            ? 'Swim into anything to open it — arrows or WASD, Space to boost'
-            : 'Reduced motion is on — the scene is static. Click or tab to any object to read it.'}
+          {!motion
+            ? 'Reduced motion is on — the scene is static. Click or tab to any object to read it.'
+            : compact
+              ? 'Tap the water to swim there — swim into anything to open it'
+              : 'Swim into anything to open it — arrows or WASD, Space to boost'}
           {!ready && <span className="stage-hint-load"> · loading</span>}
         </p>
       </div>
+
+      {/*
+        Mobile navigation. A phone cannot hold five clusters at a readable size,
+        so the scene shows one category at a time and this bar is how you move
+        between them. Hidden above the breakpoint, where the whole reef fits at
+        once and there is nothing to page through.
+      */}
+      <nav className="stage-tabs" aria-label="Sections">
+        <ul>
+          {CATEGORY_ORDER.map((category) => {
+            const active = tab === category;
+            return (
+              <li key={category}>
+                <button
+                  type="button"
+                  className="stage-tab"
+                  aria-current={active ? 'true' : undefined}
+                  style={active ? { color: categoryAccent[category] } : undefined}
+                  onClick={() => selectTab(category)}
+                >
+                  <span className="stage-tab-icon" aria-hidden="true">
+                    {CATEGORY_ICONS[category]}
+                  </span>
+                  <span className="stage-tab-label">{CATEGORY_LABELS[category]}</span>
+                  <span
+                    className="stage-tab-rule"
+                    aria-hidden="true"
+                    style={{ background: categoryAccent[category] }}
+                  />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
       {openObject && <Panel object={openObject} onClose={closePanel} />}
     </div>
